@@ -74,6 +74,9 @@ export default function Chatroom({
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // Which of MY messages is "tapped open" so its delete button shows. Needed
+  // on touch devices, where there's no hover to reveal it. null = none.
+  const [activeMsgId, setActiveMsgId] = useState<string | null>(null);
   // Which game pane is open (null = none), plus a small picker menu.
   const [activeGame, setActiveGame] = useState<"monopoly" | "rps" | null>(null);
   const [gameMenuOpen, setGameMenuOpen] = useState(false);
@@ -374,20 +377,31 @@ export default function Chatroom({
                   isSent ? "justify-end" : "justify-start"
                 }`}
               >
-                {/* delete appears on hover, only for your own messages */}
+                {/* Delete (own messages only): shows on hover (desktop) OR
+                    when the bubble is tapped (touch — no hover available). */}
                 {isSent && (
                   <button
                     onClick={() => deleteMessage(msg.id)}
                     title="Delete message"
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-red-600 cursor-pointer shrink-0"
+                    className={`${
+                      activeMsgId === msg.id ? "opacity-100" : "opacity-0"
+                    } group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-red-600 cursor-pointer shrink-0`}
                   >
                     <CloseIcon fontSize="small" />
                   </button>
                 )}
                 <div
+                  onClick={
+                    isSent
+                      ? () =>
+                          setActiveMsgId((cur) =>
+                            cur === msg.id ? null : msg.id,
+                          )
+                      : undefined
+                  }
                   className={`max-w-[75%] sm:max-w-xs px-4 py-2 rounded-2xl m-1.5 text-sm shadow-sm ${
                     isSent
-                      ? "bg-primary text-white rounded-br-sm"
+                      ? "bg-primary text-white rounded-br-sm cursor-pointer"
                       : "bg-light-bg text-gray-800 rounded-bl-sm"
                   }`}
                 >
