@@ -4,7 +4,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import UserTabs from "./components/molecules/UserTabs";
 import Chatroom from "./components/organisms/Chatroom";
 import { useContext, useEffect, useState } from "react";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "./firebase";
 import { ThemeContext } from "./hooks/ThemeContext";
 
@@ -16,10 +16,19 @@ interface ChatUser {
   online?: boolean;
 }
 
+// A conversation summary, keyed by the OTHER person's uid
+interface Conversation {
+  lastMessage: string;
+  lastMessageAt: number; // millis, used only for sorting
+}
+
 function App() {
   const { currentUser, logout } = useContext(ThemeContext);
 
   const [users, setUsers] = useState<ChatUser[]>([]);
+  const [conversations, setConversations] = useState<
+    Record<string, Conversation>
+  >({});
   const [activeUid, setActiveUid] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
@@ -39,10 +48,48 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  // Everyone except me, filtered by the search box
+  // Live list of MY conversations (chats I'm a participant of).
+  // We turn it into a map: otherUserUid -> { lastMessage, lastMessageAt }
+  useEffect(() => {
+    if (!currentUser) return;
+    const q = query(
+      collection(db, "chats"),
+      where("participants", "array-contains", currentUser.uid)
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const map: Record<string, Conversation> = {};
+      snapshot.docs.forEach((d) => {
+        const data = d.data() as {
+          participants: string[];
+          lastMessage?: string;
+          lastMessageAt?: { toMillis: () => number };
+        };
+        // the other participant is whoever isn't me
+        const otherUid = data.participants.find((p) => p !== currentUser.uid);
+        if (otherUid && data.lastMessage) {
+          map[otherUid] = {
+            lastMessage: data.lastMessage,
+            lastMessageAt: data.lastMessageAt?.toMillis() ?? 0,
+          };
+        }
+      });
+      setConversations(map);
+    });
+    return () => unsubscribe();
+  }, [currentUser]);
+
+  // Everyone except me, filtered by the search box, with their
+  // conversation preview attached (undefined if we've never chatted)
   const otherUsers = users
     .filter((u) => u.uid !== currentUser?.uid)
-    .filter((u) => u.name?.toLowerCase().includes(search.toLowerCase()));
+    .filter((u) => u.name?.toLowerCase().includes(search.toLowerCase()))
+    .map((u) => ({ ...u, conversation: conversations[u.uid] }))
+    // people you've chatted with first (most recent on top), then the rest
+    .sort(
+      (a, b) =>
+        (b.conversation?.lastMessageAt ?? 0) -
+        (a.conversation?.lastMessageAt ?? 0)
+    );
 
   const activeUser = otherUsers.find((u) => u.uid === activeUid);
 
@@ -54,8 +101,8 @@ function App() {
         }`}
       >
         {/* Current user + logout */}
-        <div className="flex items-center gap-3 p-3 border-b border-gray-200">
-          <div className="h-10 w-10 rounded-full overflow-hidden bg-primary flex items-center justify-center text-white shrink-0">
+        <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200">
+          <div className="h-11 w-11 rounded-full overflow-hidden bg-primary flex items-center justify-center text-white font-semibold ring-2 ring-primary/20 shrink-0">
             {currentUser?.photoURL ? (
               <img
                 src={currentUser.photoURL}
@@ -67,21 +114,28 @@ function App() {
               currentUser?.displayName?.[0]?.toUpperCase()
             )}
           </div>
-          <span className="font-semibold text-gray-700 truncate flex-1">
-            {currentUser?.displayName}
-          </span>
+          <div className="flex-1 min-w-0">
+            <h2 className="font-semibold text-gray-800 truncate leading-tight">
+              {currentUser?.displayName}
+            </h2>
+            <span className="flex items-center gap-1.5 text-xs text-green-600">
+              <span className="h-2 w-2 rounded-full bg-green-500" />
+              Online
+            </span>
+          </div>
           <button
             onClick={logout}
             title="Logout"
-            className="p-2 rounded-full hover:bg-light-text text-gray-600 cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
           >
             <LogoutIcon fontSize="small" />
+            <span className="hidden sm:inline">Logout</span>
           </button>
         </div>
 
         <div className="border-b-2 border-primary w-full p-3">
           <div className="bg-white border border-[#ddd] py-2 px-3 text-black flex gap-2 items-center rounded-xl outline-primary has-[input:focus-within]:outline-2">
-            <SearchIcon className="text-[#c2c2c2] flex-shrink-0" fontSize="small" />
+            <SearchIcon className="text-[#c2c2c2] shrink-0" fontSize="small" />
             <input
               name="search"
               value={search}
@@ -100,6 +154,7 @@ function App() {
               email={user.email}
               photoURL={user.photoURL}
               isAvailable={!!user.online}
+              lastMessage={user.conversation?.lastMessage}
               isActive={activeUid === user.uid}
               onClick={() => setActiveUid(user.uid)}
             />

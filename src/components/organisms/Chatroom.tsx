@@ -5,12 +5,14 @@ import {
   addDoc,
   collection,
   deleteDoc,
+  doc,
   getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import { ThemeContext } from "../../hooks/ThemeContext";
@@ -118,6 +120,19 @@ export default function Chatroom({
       senderId: myUid,
       createdAt: serverTimestamp(),
     });
+
+    // Save a small summary on the chat itself so the sidebar can show a
+    // "last message" preview without reading every message. participants
+    // lets each user query only the chats they belong to.
+    await setDoc(
+      doc(db, "chats", chatId),
+      {
+        participants: [myUid, uid],
+        lastMessage: text,
+        lastMessageAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
 
     // PHASE 5: keep only the newest 4 — delete anything older
     const allDocs = await getDocs(

@@ -3,6 +3,7 @@ interface UserInfo {
   email: string;
   photoURL?: string;
   isAvailable: boolean;
+  lastMessage?: string;
   onClick: () => void;
   isActive: boolean;
 }
@@ -12,6 +13,7 @@ export default function UserTabs({
   email,
   photoURL,
   isAvailable,
+  lastMessage,
   onClick,
   isActive,
 }: UserInfo) {
@@ -42,12 +44,19 @@ export default function UserTabs({
           ""
         )}
       </div>
-      <div className="text-gray-600">
+      <div className="text-gray-600 min-w-0">
         <h3 className="font-semibold">{name}</h3>
-        <div className="flex gap-2 font-light text-sm">
-          <span>{isAvailable ? "Available" : "Offline"} </span>
-          <span className="break-all line-clamp-1">{email}</span>
-        </div>
+        {lastMessage ? (
+          // show the conversation preview only if we've actually chatted
+          <p className="font-light text-sm text-gray-500 line-clamp-1 break-all">
+            {lastMessage}
+          </p>
+        ) : (
+          <div className="flex gap-2 font-light text-sm">
+            <span>{isAvailable ? "Available" : "Offline"} </span>
+            <span className="break-all line-clamp-1">{email}</span>
+          </div>
+        )}
       </div>
     </div>
   );
