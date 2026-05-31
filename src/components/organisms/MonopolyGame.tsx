@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CasinoIcon from "@mui/icons-material/Casino";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { db } from "../../firebase";
 import { ThemeContext } from "../../hooks/ThemeContext";
 
@@ -201,6 +202,7 @@ export default function MonopolyGame({
   const [displayPos, setDisplayPos] = useState<Record<string, number>>({});
   const [rolling, setRolling] = useState(false);
   const [fakeDie, setFakeDie] = useState(1);
+  const [confirmReset, setConfirmReset] = useState(false);
   const targetRef = useRef<Record<string, number>>({});
 
   const ref = doc(db, "chats", chatId, "game", "monopoly");
@@ -242,6 +244,7 @@ export default function MonopolyGame({
       log: ["New game! Each player adds 4 rules."],
     });
     setRuleInputs(["", "", "", ""]);
+    setConfirmReset(false);
   };
 
   const submitRules = () => {
@@ -493,8 +496,39 @@ export default function MonopolyGame({
         <span>Back to chat</span>
       </button>
       <div className="flex-1" />
+      {game && (
+        <button
+          onClick={() => setConfirmReset(true)}
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer"
+          title="Reset game"
+        >
+          <RestartAltIcon fontSize="small" />
+          <span className="hidden sm:inline">Reset</span>
+        </button>
+      )}
       <CasinoIcon className="text-primary" />
       <h3 className="font-semibold text-gray-800">Monopoly</h3>
+    </div>
+  );
+
+  // Reset confirmation bar — restarting wipes the game for BOTH players.
+  const ResetBar = confirmReset && (
+    <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border-b border-amber-100 shrink-0">
+      <span className="text-sm text-amber-800 flex-1">
+        Start a brand-new game? Both players add new rules.
+      </span>
+      <button
+        onClick={() => setConfirmReset(false)}
+        className="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-gray-200 cursor-pointer"
+      >
+        Cancel
+      </button>
+      <button
+        onClick={startGame}
+        className="px-3 py-1.5 text-sm bg-primary text-white rounded-lg hover:bg-black cursor-pointer"
+      >
+        New game
+      </button>
     </div>
   );
 
@@ -529,6 +563,7 @@ export default function MonopolyGame({
     return (
       <div className="h-full w-full flex flex-col bg-white">
         {Header}
+        {ResetBar}
         <div className="flex-1 overflow-y-auto p-5">
           <h4 className="font-semibold text-gray-800 mb-1">Add your 4 rules</h4>
           <p className="text-sm text-gray-500 mb-4">
@@ -584,6 +619,7 @@ export default function MonopolyGame({
   return (
     <div className="h-full w-full flex flex-col bg-white">
       {Header}
+      {ResetBar}
 
       {/* Players / money */}
       <div className="flex gap-2 px-3 py-2 border-b border-gray-100 shrink-0">

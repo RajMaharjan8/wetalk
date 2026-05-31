@@ -3,7 +3,10 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from "@mui/icons-material/Close";
 import CasinoIcon from "@mui/icons-material/Casino";
+import SportsMmaIcon from "@mui/icons-material/SportsMma";
+import VideogameAssetIcon from "@mui/icons-material/VideogameAsset";
 import MonopolyGame from "./MonopolyGame";
+import RockPaperScissors from "./RockPaperScissors";
 import { useContext, useEffect, useRef, useState } from "react";
 import {
   addDoc,
@@ -69,7 +72,9 @@ export default function Chatroom({
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [showGame, setShowGame] = useState(false);
+  // Which game pane is open (null = none), plus a small picker menu.
+  const [activeGame, setActiveGame] = useState<"monopoly" | "rps" | null>(null);
+  const [gameMenuOpen, setGameMenuOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Listen to messages in real time. We sort in JavaScript (not via Firestore
@@ -215,16 +220,25 @@ export default function Chatroom({
     .join("")
     .toUpperCase();
 
-  // The Monopoly game takes over the chat pane while open.
-  if (showGame) {
+  // A game takes over the chat pane while open.
+  if (activeGame) {
     return (
       <div className="bg-white h-full w-full flex flex-col">
-        <MonopolyGame
-          chatId={chatId}
-          opponentUid={uid}
-          opponentName={name}
-          onClose={() => setShowGame(false)}
-        />
+        {activeGame === "monopoly" ? (
+          <MonopolyGame
+            chatId={chatId}
+            opponentUid={uid}
+            opponentName={name}
+            onClose={() => setActiveGame(null)}
+          />
+        ) : (
+          <RockPaperScissors
+            chatId={chatId}
+            opponentUid={uid}
+            opponentName={name}
+            onClose={() => setActiveGame(null)}
+          />
+        )}
       </div>
     );
   }
@@ -269,14 +283,52 @@ export default function Chatroom({
             </div>
           </div>
 
-          {/* Play Monopoly */}
-          <button
-            onClick={() => setShowGame(true)}
-            title="Play Monopoly"
-            className="p-2 rounded-full text-gray-500 hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer shrink-0"
-          >
-            <CasinoIcon fontSize="small" />
-          </button>
+          {/* Play a game — opens a small picker menu */}
+          <div className="relative shrink-0">
+            <button
+              onClick={() => setGameMenuOpen((o) => !o)}
+              title="Play a game"
+              className={`p-2 rounded-full transition-colors cursor-pointer ${
+                gameMenuOpen
+                  ? "bg-primary/10 text-primary"
+                  : "text-gray-500 hover:bg-primary/10 hover:text-primary"
+              }`}
+            >
+              <VideogameAssetIcon fontSize="small" />
+            </button>
+
+            {gameMenuOpen && (
+              <>
+                {/* click-away backdrop */}
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setGameMenuOpen(false)}
+                />
+                <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-20 overflow-hidden">
+                  <button
+                    onClick={() => {
+                      setActiveGame("monopoly");
+                      setGameMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
+                    <CasinoIcon fontSize="small" className="text-primary" />
+                    Monopoly
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveGame("rps");
+                      setGameMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer border-t border-gray-100"
+                  >
+                    <SportsMmaIcon fontSize="small" className="text-primary" />
+                    Rock · Paper · Scissors
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Delete entire conversation */}
           <button
