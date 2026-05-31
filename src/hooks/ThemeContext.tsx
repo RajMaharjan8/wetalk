@@ -36,20 +36,18 @@ export default function ThemeContextProvider({ children }: ThemeContextProps) {
     return () => unsubscribe();
   }, []);
 
-  // Logout helper any component can call — flips online off, then signs out.
-  // The presence write is wrapped so a Firestore failure can NEVER block logout.
+  // Logout helper any component can call.
+  // We update "online: false" as best-effort (fire-and-forget) so a slow or
+  // blocked Firestore write can NEVER stop the actual sign-out from happening.
   const logout = async () => {
-    try {
-      if (auth.currentUser) {
-        await setDoc(
-          doc(db, "users", auth.currentUser.uid),
-          { online: false },
-          { merge: true }
-        );
-      }
-    } catch (error) {
-      console.error("Could not update online status on logout:", error);
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      setDoc(doc(db, "users", uid), { online: false }, { merge: true }).catch(
+        (error) => console.error("Could not set offline:", error)
+      );
     }
+    // This clears Firebase's stored session and fires onAuthStateChanged(null),
+    // which sets token to null and sends you back to /login automatically.
     await signOut(auth);
   };
 
