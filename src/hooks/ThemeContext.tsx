@@ -2,7 +2,7 @@ import { createContext, useEffect, useState } from "react";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
-import { registerForPush, unregisterPush } from "../notifications";
+import { initPush, removePush } from "../notifications";
 
 export const ThemeContext = createContext<any>(null);
 
@@ -57,7 +57,7 @@ export default function ThemeContextProvider({ children }: ThemeContextProps) {
         ).catch((err) => console.error("Could not save profile:", err));
 
         // Register this device for push notifications (fire-and-forget).
-        registerForPush(user.uid);
+        initPush(user.uid);
       }
       setCurrentUser(user);
       setLoading(false);
@@ -91,7 +91,7 @@ export default function ThemeContextProvider({ children }: ThemeContextProps) {
         (error) => console.error("Could not set offline:", error)
       );
       // Stop this device from receiving the user's pushes after logout.
-      await unregisterPush(uid);
+      await removePush(uid);
     }
     // This clears Firebase's stored session and fires onAuthStateChanged(null),
     // which sets token to null and sends you back to /login automatically.

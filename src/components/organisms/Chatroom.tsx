@@ -14,7 +14,6 @@ import {
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import { ThemeContext } from "../../hooks/ThemeContext";
-import { notifyRecipients } from "../../notifications";
 
 interface ChatroomProps {
   uid: string; // the OTHER person's uid
@@ -144,15 +143,6 @@ export default function Chatroom({
           { merge: true }
         ),
       ]);
-
-      // Push a notification to the other person (works even if their app is
-      // closed). Fire-and-forget — never blocks sending.
-      notifyRecipients([uid], {
-        title: currentUser.displayName ?? "New message",
-        body: text,
-        icon: currentUser.photoURL ?? "",
-        tag: chatId,
-      });
 
       // Keep only the newest MAX_MESSAGES — delete the oldest beyond that.
       // Sorted in JS so old Timestamp-format messages are handled correctly
