@@ -43,6 +43,12 @@ export async function initPush(uid: string): Promise<void> {
     });
     await waitUntilActive(registration); // avoids "no active Service Worker"
 
+    // A leftover subscription tied to a different VAPID/applicationServerKey
+    // makes the next subscribe() fail with
+    // "AbortError: Registration failed - push service error". Drop it first.
+    const existing = await registration.pushManager.getSubscription();
+    if (existing) await existing.unsubscribe();
+
     const messaging = getMessaging(app);
     const token = await getToken(messaging, {
       vapidKey: VAPID_KEY,
