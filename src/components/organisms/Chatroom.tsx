@@ -2,6 +2,8 @@ import SendIcon from "@mui/icons-material/Send";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from "@mui/icons-material/Close";
+import CasinoIcon from "@mui/icons-material/Casino";
+import MonopolyGame from "./MonopolyGame";
 import { useContext, useEffect, useRef, useState } from "react";
 import {
   addDoc,
@@ -67,6 +69,7 @@ export default function Chatroom({
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [showGame, setShowGame] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Listen to messages in real time. We sort in JavaScript (not via Firestore
@@ -212,6 +215,20 @@ export default function Chatroom({
     .join("")
     .toUpperCase();
 
+  // The Monopoly game takes over the chat pane while open.
+  if (showGame) {
+    return (
+      <div className="bg-white h-full w-full flex flex-col">
+        <MonopolyGame
+          chatId={chatId}
+          opponentUid={uid}
+          opponentName={name}
+          onClose={() => setShowGame(false)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white h-full w-full flex flex-col">
       {/* Header */}
@@ -251,6 +268,15 @@ export default function Chatroom({
               <span className="truncate">{email}</span>
             </div>
           </div>
+
+          {/* Play Monopoly */}
+          <button
+            onClick={() => setShowGame(true)}
+            title="Play Monopoly"
+            className="p-2 rounded-full text-gray-500 hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer shrink-0"
+          >
+            <CasinoIcon fontSize="small" />
+          </button>
 
           {/* Delete entire conversation */}
           <button
