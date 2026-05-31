@@ -55,7 +55,7 @@ export async function initPush(uid: string): Promise<void> {
     await setDoc(
       doc(db, "users", uid),
       { fcmTokens: arrayUnion(token) },
-      { merge: true }
+      { merge: true },
     );
 
     // App is open → show the notification ourselves (FCM only auto-shows when
@@ -68,7 +68,11 @@ export async function initPush(uid: string): Promise<void> {
       });
     });
   } catch (err) {
-    console.error("Push init failed:", err);
+    console.error("Push init failed");
+    console.error(err);
+    console.error((err as any)?.name);
+    console.error((err as any)?.message);
+    console.error((err as any)?.code);
   }
 }
 
@@ -79,7 +83,7 @@ export async function removePush(uid: string): Promise<void> {
       await setDoc(
         doc(db, "users", uid),
         { fcmTokens: arrayRemove(token) },
-        { merge: true }
+        { merge: true },
       );
     }
     if (await isSupported()) {
