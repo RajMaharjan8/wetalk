@@ -8,6 +8,7 @@
 // The SENDER lives in api/notify.js (a free Vercel serverless function).
 
 import {
+  deleteToken,
   getMessaging,
   getToken,
   isSupported,
@@ -37,7 +38,9 @@ const NOTIFY_URL = import.meta.env.VITE_NOTIFY_API_URL ?? "/api/notify";
 const SW_URL = "/firebase-messaging-sw.js";
 const SW_SCOPE = "/firebase-cloud-messaging-push-scope";
 
-// Remember the token so we can remove it on logout.
+// Remember the token so we can remove it on logout. We also persist it in
+// localStorage so logout can still find (and delete) it after a page reload.
+const TOKEN_KEY = "wetalk-fcm-token";
 let registeredToken: string | null = null;
 
 export async function registerForPush(uid: string): Promise<void> {
@@ -52,7 +55,10 @@ export async function registerForPush(uid: string): Promise<void> {
     }
 
     const permission = await Notification.requestPermission();
-    if (permission !== "granted") return;
+    if (permission !== "granted") {
+      console.warn("FCM: notification permission not granted:", permission);
+      return;
+    }
 
     const registration = await navigator.serviceWorker.register(SW_URL, {
       scope: SW_SCOPE,
@@ -63,9 +69,17 @@ export async function registerForPush(uid: string): Promise<void> {
       vapidKey: VAPID_KEY,
       serviceWorkerRegistration: registration,
     });
-    if (!token) return;
+    if (!token) {
+      console.warn("FCM: getToken returned empty.");
+      return;
+    }
+
+    // Print the token so you can test delivery straight from the Firebase
+    // Console (Cloud Messaging → Send test message) without the backend.
+    console.log("%cFCM TOKEN:", "color:#8c7ae6;font-weight:bold", token);
 
     registeredToken = token;
+    localStorage.setItem(TOKEN_KEY, token);
     await setDoc(
       doc(db, "users", uid),
       { fcmTokens: arrayUnion(token) },
@@ -83,17 +97,32 @@ export async function registerForPush(uid: string): Promise<void> {
 }
 
 export async function unregisterPush(uid: string): Promise<void> {
-  if (!registeredToken) return;
+  // Use the in-memory token, or fall back to the one saved in localStorage
+  // (survives page reloads), so logout can always find it.
+  const token = registeredToken ?? localStorage.getItem(TOKEN_KEY);
   try {
-    await setDoc(
-      doc(db, "users", uid),
-      { fcmTokens: arrayRemove(registeredToken) },
-      { merge: true }
-    );
+    if (token) {
+      // 1. Remove this device's address from the user's doc, so the sender
+      //    won't push to it anymore.
+      await setDoc(
+        doc(db, "users", uid),
+        { fcmTokens: arrayRemove(token) },
+        { merge: true }
+      );
+    }
+    // 2. Fully unsubscribe this device from FCM as well.
+    if (await isSupported()) {
+      try {
+        await deleteToken(getMessaging(app));
+      } catch {
+        /* no active token — nothing to delete */
+      }
+    }
   } catch (err) {
     console.error("Could not remove push token:", err);
   } finally {
     registeredToken = null;
+    localStorage.removeItem(TOKEN_KEY);
   }
 }
 

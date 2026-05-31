@@ -214,7 +214,7 @@ function App() {
   const hasActivePane = !!activeUser || !!activeGroup;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 h-screen overflow-hidden">
+    <div className="grid grid-cols-1 lg:grid-cols-12 h-dvh overflow-hidden">
       <div
         className={`lg:col-span-4 flex flex-col bg-light-bg h-full border-r border-gray-200 ${
           hasActivePane ? "hidden lg:flex" : "flex"

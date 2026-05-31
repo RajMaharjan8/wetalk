@@ -362,6 +362,12 @@ export default function Chatroom({
             }
             className="focus:outline-none flex-1 ml-4 text-sm disabled:cursor-not-allowed bg-transparent"
             onChange={(e) => setMessage(e.target.value)}
+            onFocus={() =>
+              setTimeout(
+                () => bottomRef.current?.scrollIntoView({ behavior: "smooth" }),
+                300
+              )
+            }
           />
           <button
             type="submit"
