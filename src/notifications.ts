@@ -22,7 +22,8 @@ import { app, auth, db } from "./firebase";
 //   "Web Push certificates" → Generate key pair → paste it here
 // (or set VITE_FIREBASE_VAPID_KEY in a .env file at the project root).
 const VAPID_KEY =
-  import.meta.env.VITE_FIREBASE_VAPID_KEY ?? "PASTE_YOUR_VAPID_KEY_HERE";
+  import.meta.env.VITE_FIREBASE_VAPID_KEY ??
+  "BLPaUNvPiaBZQfp2qCBZG7ZyZH5ZCYu7cXRlLde-SK3-NUFeWhq6i7DNPJLToF9uNVr3U2i9_BWs6heT_ZdzWqw";
 
 // Where the "send a push" serverless function lives.
 //  - In production on Vercel, leave VITE_NOTIFY_API_URL unset → same-origin
