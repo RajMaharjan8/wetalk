@@ -22,11 +22,18 @@ export default function ThemeContextProvider({ children }: ThemeContextProps) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       setLoading(false);
-      // Mark this user as online whenever a session is active
+      // Save / refresh this user's full profile on every session so the
+      // "users" collection always has their name, email, photo and online flag.
       if (user) {
         await setDoc(
           doc(db, "users", user.uid),
-          { online: true },
+          {
+            uid: user.uid,
+            name: user.displayName,
+            email: user.email,
+            photoURL: user.photoURL,
+            online: true,
+          },
           { merge: true }
         );
       }
@@ -34,6 +41,20 @@ export default function ThemeContextProvider({ children }: ThemeContextProps) {
 
     // Cleanup: stop listening when the app unmounts
     return () => unsubscribe();
+  }, []);
+
+  // Best-effort: mark offline when the tab/window is closed.
+  // (Not 100% guaranteed — browsers may kill the tab before the write
+  // finishes. True presence would need Realtime Database's onDisconnect.)
+  useEffect(() => {
+    const handleClose = () => {
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        setDoc(doc(db, "users", uid), { online: false }, { merge: true });
+      }
+    };
+    window.addEventListener("beforeunload", handleClose);
+    return () => window.removeEventListener("beforeunload", handleClose);
   }, []);
 
   // Logout helper any component can call.

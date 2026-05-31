@@ -3,7 +3,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import LogoutIcon from "@mui/icons-material/Logout";
 import UserTabs from "./components/molecules/UserTabs";
 import Chatroom from "./components/organisms/Chatroom";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "./firebase";
 import { ThemeContext } from "./hooks/ThemeContext";
@@ -32,7 +32,19 @@ function App() {
   const [activeUid, setActiveUid] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
-  // Ask once for permission to show desktop notifications (used in Phase 6)
+  // Refs let the chat listener read the LATEST users / open-chat without
+  // re-subscribing every time they change (which would reset notifications).
+  const usersRef = useRef<ChatUser[]>([]);
+  const activeUidRef = useRef<string | null>(null);
+  usersRef.current = users;
+  activeUidRef.current = activeUid;
+
+  // Remembers the newest message time we've already notified about, per chat,
+  // so the same message never notifies twice.
+  const notifiedAtRef = useRef<Record<string, number>>({});
+  const notifyReadyRef = useRef(false); // skip the very first snapshot (history)
+
+  // Ask once for permission to show desktop notifications
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
@@ -62,17 +74,40 @@ function App() {
         const data = d.data() as {
           participants: string[];
           lastMessage?: string;
-          lastMessageAt?: { toMillis: () => number };
+          lastSenderId?: string;
+          lastMessageAt?: number;
         };
         // the other participant is whoever isn't me
         const otherUid = data.participants.find((p) => p !== currentUser.uid);
-        if (otherUid && data.lastMessage) {
-          map[otherUid] = {
-            lastMessage: data.lastMessage,
-            lastMessageAt: data.lastMessageAt?.toMillis() ?? 0,
-          };
+        if (!otherUid || !data.lastMessage) return;
+
+        const at = data.lastMessageAt ?? 0;
+        map[otherUid] = { lastMessage: data.lastMessage, lastMessageAt: at };
+
+        // ---- Notification ----
+        // Fire only for a NEW message sent by the other person, and only when
+        // I'm not already looking at that chat (or the tab is in the background).
+        const isIncoming = data.lastSenderId === otherUid;
+        const isNew = at > (notifiedAtRef.current[d.id] ?? 0);
+        const notLooking = document.hidden || activeUidRef.current !== otherUid;
+
+        if (isIncoming && isNew && notifyReadyRef.current && notLooking) {
+          if (
+            "Notification" in window &&
+            Notification.permission === "granted"
+          ) {
+            const sender = usersRef.current.find((u) => u.uid === otherUid);
+            new Notification(`New message from ${sender?.name ?? "someone"}`, {
+              body: data.lastMessage,
+              icon: sender?.photoURL,
+            });
+          }
         }
+        notifiedAtRef.current[d.id] = at;
       });
+      // after the first snapshot we've recorded all existing timestamps,
+      // so future changes are genuinely new and safe to notify on
+      notifyReadyRef.current = true;
       setConversations(map);
     });
     return () => unsubscribe();
