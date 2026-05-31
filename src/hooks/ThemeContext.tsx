@@ -2,6 +2,7 @@ import { createContext, useEffect, useState } from "react";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
+import { registerForPush, unregisterPush } from "../notifications";
 
 export const ThemeContext = createContext<any>(null);
 
@@ -25,19 +26,25 @@ export default function ThemeContextProvider({ children }: ThemeContextProps) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         // If the admin banned this account, kick them straight back out.
-        const snap = await getDoc(doc(db, "users", user.uid));
-        if (snap.exists() && snap.data().banned) {
-          setBanned(true);
-          setCurrentUser(null);
-          setLoading(false);
-          await signOut(auth); // fires this callback again with user = null
-          return;
+        try {
+          const snap = await getDoc(doc(db, "users", user.uid));
+          if (snap.exists() && snap.data().banned) {
+            setBanned(true);
+            setCurrentUser(null);
+            setLoading(false);
+            await signOut(auth); // fires this callback again with user = null
+            return;
+          }
+        } catch (err) {
+          console.error("Ban check failed:", err);
         }
 
-        // Save / refresh this user's full profile on every session so the
-        // "users" collection always has their name, email, photo and online
-        // flag. (A user the admin DELETED is recreated here on next sign-in.)
-        await setDoc(
+        // Save / refresh this user's full profile so the "users" collection
+        // always has their name, email, photo and online flag. (A user the
+        // admin DELETED is recreated here on next sign-in.)
+        // Fire-and-forget: a slow/blocked write must NEVER stop the redirect
+        // into the app.
+        setDoc(
           doc(db, "users", user.uid),
           {
             uid: user.uid,
@@ -47,7 +54,10 @@ export default function ThemeContextProvider({ children }: ThemeContextProps) {
             online: true,
           },
           { merge: true }
-        );
+        ).catch((err) => console.error("Could not save profile:", err));
+
+        // Register this device for push notifications (fire-and-forget).
+        registerForPush(user.uid);
       }
       setCurrentUser(user);
       setLoading(false);
@@ -80,6 +90,8 @@ export default function ThemeContextProvider({ children }: ThemeContextProps) {
       setDoc(doc(db, "users", uid), { online: false }, { merge: true }).catch(
         (error) => console.error("Could not set offline:", error)
       );
+      // Stop this device from receiving the user's pushes after logout.
+      await unregisterPush(uid);
     }
     // This clears Firebase's stored session and fires onAuthStateChanged(null),
     // which sets token to null and sends you back to /login automatically.

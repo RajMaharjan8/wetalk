@@ -17,6 +17,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import { ThemeContext } from "../../hooks/ThemeContext";
+import { notifyRecipients } from "../../notifications";
 
 export interface Group {
   id: string;
@@ -131,6 +132,18 @@ export default function GroupChatroom({
           { merge: true }
         ),
       ]);
+
+      // Push a notification to every other member (works even if their app is
+      // closed). Fire-and-forget — never blocks sending.
+      notifyRecipients(
+        group.members.filter((m) => m !== myUid),
+        {
+          title: group.name,
+          body: `${currentUser.displayName ?? "Someone"}: ${text}`,
+          icon: currentUser.photoURL ?? "",
+          tag: group.id,
+        }
+      );
 
       // Trim to the newest MAX_MESSAGES (delete the oldest beyond that).
       const allDocs = await getDocs(messagesRef);
