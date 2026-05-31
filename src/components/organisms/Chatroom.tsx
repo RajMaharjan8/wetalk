@@ -18,6 +18,7 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { db } from "../../firebase";
+import { notifyNewMessage } from "../../sendPush";
 import { ThemeContext } from "../../hooks/ThemeContext";
 
 interface ChatroomProps {
@@ -36,8 +37,9 @@ interface Message {
   createdAt: number;
 }
 
-// How many of the latest messages we keep. Also the max number of
-// messages you may send in a row before the other person must reply.
+// Max number of messages you may send in a row before the other person must
+// reply. (Messages are NOT deleted — full history is kept; this is only the
+// "wait for a reply" send-limit.)
 const MAX_MESSAGES = 4;
 
 // Normalise a createdAt that might be a plain number (new format) OR an old
@@ -91,9 +93,9 @@ export default function Chatroom({
           createdAt: toMillis(data.createdAt),
         };
       });
-      // oldest -> newest, then keep only the latest MAX_MESSAGES
+      // oldest -> newest. We keep the FULL history now (no trimming).
       msgs.sort((a, b) => a.createdAt - b.createdAt);
-      setAllMessages(msgs.slice(-MAX_MESSAGES));
+      setAllMessages(msgs);
     });
     return () => unsubscribe();
   }, [chatId]);
@@ -152,15 +154,8 @@ export default function Chatroom({
         ),
       ]);
 
-      // Keep only the newest MAX_MESSAGES — delete the oldest beyond that.
-      // Sorted in JS so old Timestamp-format messages are handled correctly
-      // (and get cleaned out naturally as you chat).
-      const allDocs = await getDocs(messagesRef);
-      const sorted = allDocs.docs
-        .map((d) => ({ ref: d.ref, at: toMillis(d.data().createdAt) }))
-        .sort((a, b) => a.at - b.at); // oldest first
-      const extra = sorted.slice(0, Math.max(0, sorted.length - MAX_MESSAGES));
-      await Promise.all(extra.map((x) => deleteDoc(x.ref)));
+      // Ask our free Vercel sender to push the recipient (best-effort).
+      notifyNewMessage("chat", chatId);
     } catch (error) {
       console.error("Could not send message:", error);
     } finally {

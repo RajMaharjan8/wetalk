@@ -16,6 +16,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { db } from "../../firebase";
+import { notifyNewMessage } from "../../sendPush";
 import { ThemeContext } from "../../hooks/ThemeContext";
 
 export interface Group {
@@ -47,9 +48,6 @@ interface GroupMessage {
   senderPhotoURL?: string;
   createdAt: number;
 }
-
-// Groups keep more history than 1-on-1 chats (which keep only 4).
-const MAX_MESSAGES = 50;
 
 function toMillis(value: unknown): number {
   if (typeof value === "number") return value;
@@ -91,7 +89,7 @@ export default function GroupChatroom({
         };
       });
       msgs.sort((a, b) => a.createdAt - b.createdAt);
-      setMessages(msgs.slice(-MAX_MESSAGES));
+      setMessages(msgs);
     });
     return () => unsubscribe();
   }, [group.id]);
@@ -132,13 +130,8 @@ export default function GroupChatroom({
         ),
       ]);
 
-      // Trim to the newest MAX_MESSAGES (delete the oldest beyond that).
-      const allDocs = await getDocs(messagesRef);
-      const sorted = allDocs.docs
-        .map((d) => ({ ref: d.ref, at: toMillis(d.data().createdAt) }))
-        .sort((a, b) => a.at - b.at);
-      const extra = sorted.slice(0, Math.max(0, sorted.length - MAX_MESSAGES));
-      await Promise.all(extra.map((x) => deleteDoc(x.ref)));
+      // Ask our free Vercel sender to push the other members (best-effort).
+      notifyNewMessage("group", group.id);
     } catch (error) {
       console.error("Could not send group message:", error);
     } finally {
