@@ -1,8 +1,12 @@
 import "./App.css";
 import SearchIcon from "@mui/icons-material/Search";
 import LogoutIcon from "@mui/icons-material/Logout";
+import GroupAddIcon from "@mui/icons-material/GroupAdd";
 import UserTabs from "./components/molecules/UserTabs";
+import GroupTab from "./components/molecules/GroupTab";
 import Chatroom from "./components/organisms/Chatroom";
+import GroupChatroom from "./components/organisms/GroupChatroom";
+import CreateGroupModal from "./components/organisms/CreateGroupModal";
 import { useContext, useEffect, useRef, useState } from "react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "./firebase";
@@ -22,27 +26,55 @@ interface Conversation {
   lastMessageAt: number; // millis, used only for sorting
 }
 
+// A group the current user is a member of
+interface GroupDoc {
+  id: string;
+  name: string;
+  members: string[];
+  createdBy?: string;
+  lastMessage?: string;
+  lastSenderId?: string;
+  lastSenderName?: string;
+  lastMessageAt?: number;
+}
+
 function App() {
   const { currentUser, logout } = useContext(ThemeContext);
 
   const [users, setUsers] = useState<ChatUser[]>([]);
+  const [groups, setGroups] = useState<GroupDoc[]>([]);
   const [conversations, setConversations] = useState<
     Record<string, Conversation>
   >({});
+  // Exactly one of these is set at a time (a direct chat OR a group).
   const [activeUid, setActiveUid] = useState<string | null>(null);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
 
-  // Refs let the chat listener read the LATEST users / open-chat without
-  // re-subscribing every time they change (which would reset notifications).
+  // Refs let the listeners read the LATEST values without re-subscribing.
   const usersRef = useRef<ChatUser[]>([]);
   const activeUidRef = useRef<string | null>(null);
+  const activeGroupIdRef = useRef<string | null>(null);
   usersRef.current = users;
   activeUidRef.current = activeUid;
+  activeGroupIdRef.current = activeGroupId;
 
-  // Remembers the newest message time we've already notified about, per chat,
-  // so the same message never notifies twice.
+  // Remembers the newest message time we've already notified about, per chat
+  // OR per group, so the same message never notifies twice.
   const notifiedAtRef = useRef<Record<string, number>>({});
-  const notifyReadyRef = useRef(false); // skip the very first snapshot (history)
+  const notifyReadyRef = useRef(false); // skip the first direct-chat snapshot
+  const groupNotifyReadyRef = useRef(false); // skip the first group snapshot
+
+  // Selecting a direct chat clears any active group, and vice versa.
+  const selectUser = (uid: string) => {
+    setActiveGroupId(null);
+    setActiveUid(uid);
+  };
+  const selectGroup = (id: string) => {
+    setActiveUid(null);
+    setActiveGroupId(id);
+  };
 
   // Ask once for permission to show desktop notifications
   useEffect(() => {
@@ -60,8 +92,7 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  // Live list of MY conversations (chats I'm a participant of).
-  // We turn it into a map: otherUserUid -> { lastMessage, lastMessageAt }
+  // Live list of MY conversations (direct chats I'm a participant of).
   useEffect(() => {
     if (!currentUser) return;
     const q = query(
@@ -77,16 +108,13 @@ function App() {
           lastSenderId?: string;
           lastMessageAt?: number;
         };
-        // the other participant is whoever isn't me
         const otherUid = data.participants.find((p) => p !== currentUser.uid);
         if (!otherUid || !data.lastMessage) return;
 
         const at = data.lastMessageAt ?? 0;
         map[otherUid] = { lastMessage: data.lastMessage, lastMessageAt: at };
 
-        // ---- Notification ----
-        // Fire only for a NEW message sent by the other person, and only when
-        // I'm not already looking at that chat (or the tab is in the background).
+        // ---- Notification (direct) ----
         const isIncoming = data.lastSenderId === otherUid;
         const isNew = at > (notifiedAtRef.current[d.id] ?? 0);
         const notLooking = document.hidden || activeUidRef.current !== otherUid;
@@ -105,34 +133,91 @@ function App() {
         }
         notifiedAtRef.current[d.id] = at;
       });
-      // after the first snapshot we've recorded all existing timestamps,
-      // so future changes are genuinely new and safe to notify on
       notifyReadyRef.current = true;
       setConversations(map);
     });
     return () => unsubscribe();
   }, [currentUser]);
 
-  // Everyone except me, filtered by the search box, with their
-  // conversation preview attached (undefined if we've never chatted)
+  // Live list of the groups I'm a member of
+  useEffect(() => {
+    if (!currentUser) return;
+    const q = query(
+      collection(db, "groups"),
+      where("members", "array-contains", currentUser.uid)
+    );
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+      const list: GroupDoc[] = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<GroupDoc, "id">),
+      }));
+
+      // ---- Notification (group) ----
+      list.forEach((g) => {
+        const at = g.lastMessageAt ?? 0;
+        const isIncoming = !!g.lastSenderId && g.lastSenderId !== currentUser.uid;
+        const isNew = at > (notifiedAtRef.current[g.id] ?? 0);
+        const notLooking =
+          document.hidden || activeGroupIdRef.current !== g.id;
+
+        if (
+          isIncoming &&
+          isNew &&
+          groupNotifyReadyRef.current &&
+          notLooking &&
+          g.lastMessage
+        ) {
+          if (
+            "Notification" in window &&
+            Notification.permission === "granted"
+          ) {
+            new Notification(g.name, {
+              body: `${g.lastSenderName ?? "Someone"}: ${g.lastMessage}`,
+            });
+          }
+        }
+        notifiedAtRef.current[g.id] = at;
+      });
+      groupNotifyReadyRef.current = true;
+
+      // newest-active groups first
+      list.sort((a, b) => (b.lastMessageAt ?? 0) - (a.lastMessageAt ?? 0));
+      setGroups(list);
+      },
+      (error) => {
+        // Most likely the groups rules aren't published yet.
+        console.error("Could not read groups:", error.code, error.message);
+      }
+    );
+    return () => unsubscribe();
+  }, [currentUser]);
+
+  // Everyone except me, filtered by search, with conversation preview attached
   const otherUsers = users
     .filter((u) => u.uid !== currentUser?.uid)
     .filter((u) => u.name?.toLowerCase().includes(search.toLowerCase()))
     .map((u) => ({ ...u, conversation: conversations[u.uid] }))
-    // people you've chatted with first (most recent on top), then the rest
     .sort(
       (a, b) =>
         (b.conversation?.lastMessageAt ?? 0) -
         (a.conversation?.lastMessageAt ?? 0)
     );
 
+  const visibleGroups = groups.filter((g) =>
+    g.name?.toLowerCase().includes(search.toLowerCase())
+  );
+
   const activeUser = otherUsers.find((u) => u.uid === activeUid);
+  const activeGroup = groups.find((g) => g.id === activeGroupId);
+  const hasActivePane = !!activeUser || !!activeGroup;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 h-screen overflow-hidden">
       <div
         className={`lg:col-span-4 flex flex-col bg-light-bg h-full border-r border-gray-200 ${
-          activeUser ? "hidden lg:flex" : "flex"
+          hasActivePane ? "hidden lg:flex" : "flex"
         }`}
       >
         {/* Current user + logout */}
@@ -175,34 +260,83 @@ function App() {
               name="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search Names..."
+              placeholder="Search names or groups..."
               className="w-full focus:outline-none text-sm"
             />
           </div>
         </div>
 
-        <ul className="cursor-pointer flex flex-col w-full overflow-y-auto flex-1">
-          {otherUsers.map((user) => (
-            <UserTabs
-              key={user.uid}
-              name={user.name}
-              email={user.email}
-              photoURL={user.photoURL}
-              isAvailable={!!user.online}
-              lastMessage={user.conversation?.lastMessage}
-              isActive={activeUid === user.uid}
-              onClick={() => setActiveUid(user.uid)}
-            />
-          ))}
-        </ul>
+        <div className="flex-1 overflow-y-auto">
+          {/* ---- Groups section ---- */}
+          <div className="flex items-center justify-between px-4 pt-3 pb-1">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              Groups
+            </span>
+            <button
+              onClick={() => setShowCreateGroup(true)}
+              title="New group"
+              className="flex items-center gap-1 text-xs text-primary hover:text-secondary font-medium cursor-pointer"
+            >
+              <GroupAddIcon style={{ fontSize: 18 }} />
+              New
+            </button>
+          </div>
+          {visibleGroups.length === 0 ? (
+            <p className="px-4 py-2 text-xs text-gray-400">
+              No groups yet. Create one to chat with several people.
+            </p>
+          ) : (
+            <ul className="flex flex-col w-full">
+              {visibleGroups.map((g) => (
+                <GroupTab
+                  key={g.id}
+                  name={g.name}
+                  memberCount={g.members.length}
+                  lastMessage={g.lastMessage}
+                  lastSenderName={g.lastSenderName}
+                  isActive={activeGroupId === g.id}
+                  onClick={() => selectGroup(g.id)}
+                />
+              ))}
+            </ul>
+          )}
+
+          {/* ---- People section ---- */}
+          <div className="px-4 pt-4 pb-1">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              People
+            </span>
+          </div>
+          <ul className="cursor-pointer flex flex-col w-full">
+            {otherUsers.map((user) => (
+              <UserTabs
+                key={user.uid}
+                name={user.name}
+                email={user.email}
+                photoURL={user.photoURL}
+                isAvailable={!!user.online}
+                lastMessage={user.conversation?.lastMessage}
+                isActive={activeUid === user.uid}
+                onClick={() => selectUser(user.uid)}
+              />
+            ))}
+          </ul>
+        </div>
       </div>
 
       <div
         className={`lg:col-span-8 h-full ${
-          activeUser ? "flex" : "hidden lg:flex"
+          hasActivePane ? "flex" : "hidden lg:flex"
         }`}
       >
-        {activeUser ? (
+        {activeGroup ? (
+          <GroupChatroom
+            group={activeGroup}
+            allUsers={users}
+            onBack={() => setActiveGroupId(null)}
+            onLeft={() => setActiveGroupId(null)}
+          />
+        ) : activeUser ? (
           <Chatroom
             uid={activeUser.uid}
             name={activeUser.name}
@@ -217,6 +351,19 @@ function App() {
           </div>
         )}
       </div>
+
+      {/* Create-group modal */}
+      {showCreateGroup && (
+        <CreateGroupModal
+          users={otherUsers}
+          myUid={currentUser.uid}
+          onClose={() => setShowCreateGroup(false)}
+          onCreated={(groupId) => {
+            setShowCreateGroup(false);
+            selectGroup(groupId);
+          }}
+        />
+      )}
     </div>
   );
 }

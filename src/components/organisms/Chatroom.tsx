@@ -120,24 +120,29 @@ export default function Chatroom({
       // orderBy hide the message and feels slow.)
       const now = Date.now();
       const messagesRef = collection(db, "chats", chatId, "messages");
-      await addDoc(messagesRef, {
-        text,
-        senderId: myUid,
-        createdAt: now,
-      });
 
-      // Save a summary on the chat doc so the sidebar can show a preview
-      // and the global notifier knows who sent the last message.
-      await setDoc(
-        doc(db, "chats", chatId),
-        {
-          participants: [myUid, uid],
-          lastMessage: text,
-          lastSenderId: myUid,
-          lastMessageAt: now,
-        },
-        { merge: true }
-      );
+      // Fire both writes in PARALLEL. The chat-summary write is what triggers
+      // the other person's notification, so not waiting on the message write
+      // first makes the notification land a touch sooner.
+      await Promise.all([
+        addDoc(messagesRef, {
+          text,
+          senderId: myUid,
+          createdAt: now,
+        }),
+        // Save a summary on the chat doc so the sidebar can show a preview
+        // and the global notifier knows who sent the last message.
+        setDoc(
+          doc(db, "chats", chatId),
+          {
+            participants: [myUid, uid],
+            lastMessage: text,
+            lastSenderId: myUid,
+            lastMessageAt: now,
+          },
+          { merge: true }
+        ),
+      ]);
 
       // Keep only the newest MAX_MESSAGES — delete the oldest beyond that.
       // Sorted in JS so old Timestamp-format messages are handled correctly
