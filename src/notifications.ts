@@ -43,6 +43,28 @@ const SW_SCOPE = "/firebase-cloud-messaging-push-scope";
 const TOKEN_KEY = "wetalk-fcm-token";
 let registeredToken: string | null = null;
 
+// getToken's push subscription fails with "no active Service Worker" if the
+// worker is still installing. Wait until it's activated (with a safety timeout).
+function waitUntilActive(reg: ServiceWorkerRegistration): Promise<void> {
+  return new Promise((resolve) => {
+    if (reg.active) return resolve();
+    const done = () => {
+      if (reg.active) {
+        clearInterval(poll);
+        clearTimeout(timer);
+        resolve();
+      }
+    };
+    const worker = reg.installing || reg.waiting;
+    worker?.addEventListener("statechange", done);
+    const poll = setInterval(done, 200); // safety net if events are missed
+    const timer = setTimeout(() => {
+      clearInterval(poll);
+      resolve();
+    }, 10000);
+  });
+}
+
 export async function registerForPush(uid: string): Promise<void> {
   try {
     if (!(await isSupported()) || !("serviceWorker" in navigator)) return;
@@ -63,6 +85,8 @@ export async function registerForPush(uid: string): Promise<void> {
     const registration = await navigator.serviceWorker.register(SW_URL, {
       scope: SW_SCOPE,
     });
+    // Make sure the worker is actually active before subscribing for push.
+    await waitUntilActive(registration);
 
     const messaging = getMessaging(app);
     const token = await getToken(messaging, {
