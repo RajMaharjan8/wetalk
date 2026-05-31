@@ -88,6 +88,16 @@ export async function registerForPush(uid: string): Promise<void> {
     // Make sure the worker is actually active before subscribing for push.
     await waitUntilActive(registration);
 
+    // Clear any stale push subscription left over from a previous deploy or a
+    // different VAPID key — otherwise re-subscribing fails with
+    // "Registration failed - push service error".
+    try {
+      const existing = await registration.pushManager.getSubscription();
+      if (existing) await existing.unsubscribe();
+    } catch {
+      /* ignore */
+    }
+
     const messaging = getMessaging(app);
     const token = await getToken(messaging, {
       vapidKey: VAPID_KEY,
