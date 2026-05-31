@@ -24,6 +24,7 @@ interface ChatUser {
 interface Conversation {
   lastMessage: string;
   lastMessageAt: number; // millis, used only for sorting
+  lastSenderId?: string; // who sent the last message (for unread detection)
 }
 
 // A group the current user is a member of
@@ -52,6 +53,25 @@ function App() {
   const [search, setSearch] = useState("");
   const [showCreateGroup, setShowCreateGroup] = useState(false);
 
+  // Unread tracking: remember the newest message time we've "seen" per chat or
+  // group (persisted so it survives refreshes). A conversation is unread when
+  // its last message is newer than that and was sent by the other person.
+  const [lastSeen, setLastSeen] = useState<Record<string, number>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("wetalk-last-seen") || "{}");
+    } catch {
+      return {};
+    }
+  });
+  const markSeen = (key: string, at: number) => {
+    setLastSeen((prev) => {
+      if ((prev[key] ?? 0) >= at) return prev;
+      const next = { ...prev, [key]: at };
+      localStorage.setItem("wetalk-last-seen", JSON.stringify(next));
+      return next;
+    });
+  };
+
   // Refs let the listeners read the LATEST values without re-subscribing.
   const usersRef = useRef<ChatUser[]>([]);
   const activeUidRef = useRef<string | null>(null);
@@ -70,10 +90,12 @@ function App() {
   const selectUser = (uid: string) => {
     setActiveGroupId(null);
     setActiveUid(uid);
+    markSeen(uid, Date.now()); // opening a chat clears its unread state
   };
   const selectGroup = (id: string) => {
     setActiveUid(null);
     setActiveGroupId(id);
+    markSeen(id, Date.now());
   };
 
   // Ask once for permission to show desktop notifications
@@ -112,7 +134,14 @@ function App() {
         if (!otherUid || !data.lastMessage) return;
 
         const at = data.lastMessageAt ?? 0;
-        map[otherUid] = { lastMessage: data.lastMessage, lastMessageAt: at };
+        map[otherUid] = {
+          lastMessage: data.lastMessage,
+          lastMessageAt: at,
+          lastSenderId: data.lastSenderId,
+        };
+
+        // If I'm currently viewing this chat, keep it marked as seen.
+        if (activeUidRef.current === otherUid) markSeen(otherUid, at);
 
         // ---- Notification (direct) ----
         const isIncoming = data.lastSenderId === otherUid;
@@ -194,20 +223,41 @@ function App() {
     return () => unsubscribe();
   }, [currentUser]);
 
+  // True when the conversation's last message came from the other side and is
+  // newer than what we've seen.
+  const isUnread = (key: string, at?: number, senderId?: string) =>
+    !!senderId &&
+    senderId !== currentUser?.uid &&
+    (at ?? 0) > (lastSeen[key] ?? 0);
+
   // Everyone except me, filtered by search, with conversation preview attached
   const otherUsers = users
     .filter((u) => u.uid !== currentUser?.uid)
     .filter((u) => u.name?.toLowerCase().includes(search.toLowerCase()))
-    .map((u) => ({ ...u, conversation: conversations[u.uid] }))
+    .map((u) => {
+      const conversation = conversations[u.uid];
+      return {
+        ...u,
+        conversation,
+        unread: isUnread(
+          u.uid,
+          conversation?.lastMessageAt,
+          conversation?.lastSenderId
+        ),
+      };
+    })
     .sort(
       (a, b) =>
         (b.conversation?.lastMessageAt ?? 0) -
         (a.conversation?.lastMessageAt ?? 0)
     );
 
-  const visibleGroups = groups.filter((g) =>
-    g.name?.toLowerCase().includes(search.toLowerCase())
-  );
+  const visibleGroups = groups
+    .filter((g) => g.name?.toLowerCase().includes(search.toLowerCase()))
+    .map((g) => ({
+      ...g,
+      unread: isUnread(g.id, g.lastMessageAt, g.lastSenderId),
+    }));
 
   const activeUser = otherUsers.find((u) => u.uid === activeUid);
   const activeGroup = groups.find((g) => g.id === activeGroupId);
@@ -295,6 +345,7 @@ function App() {
                   lastMessage={g.lastMessage}
                   lastSenderName={g.lastSenderName}
                   isActive={activeGroupId === g.id}
+                  unread={g.unread}
                   onClick={() => selectGroup(g.id)}
                 />
               ))}
@@ -317,6 +368,7 @@ function App() {
                 isAvailable={!!user.online}
                 lastMessage={user.conversation?.lastMessage}
                 isActive={activeUid === user.uid}
+                unread={user.unread}
                 onClick={() => selectUser(user.uid)}
               />
             ))}

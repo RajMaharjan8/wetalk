@@ -6,6 +6,7 @@ interface UserInfo {
   lastMessage?: string;
   onClick: () => void;
   isActive: boolean;
+  unread?: boolean;
 }
 
 export default function UserTabs({
@@ -16,6 +17,7 @@ export default function UserTabs({
   lastMessage,
   onClick,
   isActive,
+  unread,
 }: UserInfo) {
   const initials = name
     .split(" ")
@@ -46,11 +48,19 @@ export default function UserTabs({
           <span className="absolute bottom-0 right-0 h-4 w-4 bg-green-500 rounded-full border-2 border-white" />
         )}
       </div>
-      <div className="text-gray-600 min-w-0">
-        <h3 className="font-semibold">{name}</h3>
+      <div className="text-gray-600 min-w-0 flex-1">
+        <h3 className={`flex items-center gap-2 ${unread ? "font-bold text-gray-900" : "font-semibold"}`}>
+          <span className="truncate">{name}</span>
+          {/* unread dot */}
+          {unread && <span className="h-2.5 w-2.5 rounded-full bg-primary shrink-0" />}
+        </h3>
         {lastMessage ? (
           // show the conversation preview only if we've actually chatted
-          <p className="font-light text-sm text-gray-500 line-clamp-1 break-all">
+          <p
+            className={`text-sm line-clamp-1 break-all ${
+              unread ? "font-semibold text-gray-900" : "font-light text-gray-500"
+            }`}
+          >
             {lastMessage}
           </p>
         ) : (

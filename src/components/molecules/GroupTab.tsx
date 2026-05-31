@@ -6,6 +6,7 @@ interface GroupTabProps {
   lastMessage?: string;
   lastSenderName?: string;
   isActive: boolean;
+  unread?: boolean;
   onClick: () => void;
 }
 
@@ -15,6 +16,7 @@ export default function GroupTab({
   lastMessage,
   lastSenderName,
   isActive,
+  unread,
   onClick,
 }: GroupTabProps) {
   return (
@@ -28,10 +30,17 @@ export default function GroupTab({
       <div className="h-14 w-14 shrink-0 rounded-full bg-primary flex justify-center items-center text-white">
         <GroupsIcon />
       </div>
-      <div className="text-gray-600 min-w-0">
-        <h3 className="font-semibold truncate">{name}</h3>
+      <div className="text-gray-600 min-w-0 flex-1">
+        <h3 className={`truncate flex items-center gap-2 ${unread ? "font-bold text-gray-900" : "font-semibold"}`}>
+          <span className="truncate">{name}</span>
+          {unread && <span className="h-2.5 w-2.5 rounded-full bg-primary shrink-0" />}
+        </h3>
         {lastMessage ? (
-          <p className="font-light text-sm text-gray-500 line-clamp-1 break-all">
+          <p
+            className={`text-sm line-clamp-1 break-all ${
+              unread ? "font-semibold text-gray-900" : "font-light text-gray-500"
+            }`}
+          >
             {lastSenderName ? `${lastSenderName.split(" ")[0]}: ` : ""}
             {lastMessage}
           </p>
