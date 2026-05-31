@@ -1,6 +1,6 @@
 import { createContext, useEffect, useState } from "react";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 
 export const ThemeContext = createContext<any>(null);
@@ -14,17 +14,29 @@ export default function ThemeContextProvider({ children }: ThemeContextProps) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   // loading = true while Firebase is still checking who's logged in
   const [loading, setLoading] = useState(true);
+  // banned = true when the last login attempt was rejected because the admin
+  // banned this account. The Login page reads it to show a message.
+  const [banned, setBanned] = useState(false);
 
   useEffect(() => {
     // Firebase calls this callback automatically:
     //  - once on page load (to restore an existing session)
     //  - every time someone logs in or out
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      setLoading(false);
-      // Save / refresh this user's full profile on every session so the
-      // "users" collection always has their name, email, photo and online flag.
       if (user) {
+        // If the admin banned this account, kick them straight back out.
+        const snap = await getDoc(doc(db, "users", user.uid));
+        if (snap.exists() && snap.data().banned) {
+          setBanned(true);
+          setCurrentUser(null);
+          setLoading(false);
+          await signOut(auth); // fires this callback again with user = null
+          return;
+        }
+
+        // Save / refresh this user's full profile on every session so the
+        // "users" collection always has their name, email, photo and online
+        // flag. (A user the admin DELETED is recreated here on next sign-in.)
         await setDoc(
           doc(db, "users", user.uid),
           {
@@ -37,6 +49,8 @@ export default function ThemeContextProvider({ children }: ThemeContextProps) {
           { merge: true }
         );
       }
+      setCurrentUser(user);
+      setLoading(false);
     });
 
     // Cleanup: stop listening when the app unmounts
@@ -78,6 +92,10 @@ export default function ThemeContextProvider({ children }: ThemeContextProps) {
     token: currentUser ? currentUser.uid : null,
     loading,
     logout,
+    // banned = the last sign-in was blocked by an admin ban.
+    banned,
+    // clearBanned lets the Login page reset the message before a new attempt.
+    clearBanned: () => setBanned(false),
   };
 
   // Wait until Firebase has answered before showing routes,

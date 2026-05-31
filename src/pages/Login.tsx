@@ -2,8 +2,7 @@ import { useContext, useState } from "react";
 import { ThemeContext } from "../hooks/ThemeContext";
 import { Navigate } from "react-router-dom";
 import { signInWithPopup } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
-import { auth, googleProvider, db } from "../firebase";
+import { auth, googleProvider } from "../firebase";
 
 export default function Login() {
   const user = useContext(ThemeContext);
@@ -13,24 +12,14 @@ export default function Login() {
     return <Navigate to="/" />;
   }
 
-  // Runs when the user clicks "Continue with Google"
+  // Runs when the user clicks "Continue with Google".
+  // The profile write + ban check both happen in ThemeContext's auth listener,
+  // so here we only need to open the Google popup.
   const handleGoogleLogin = async () => {
     try {
       setLoading(true);
-      const result = await signInWithPopup(auth, googleProvider);
-      const loggedInUser = result.user;
-
-      await setDoc(
-        doc(db, "users", loggedInUser.uid),
-        {
-          uid: loggedInUser.uid,
-          name: loggedInUser.displayName,
-          email: loggedInUser.email,
-          photoURL: loggedInUser.photoURL,
-          online: true,
-        },
-        { merge: true }
-      );
+      user.clearBanned(); // reset any previous "banned" message
+      await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error("Google login failed:", error);
     } finally {
@@ -41,10 +30,12 @@ export default function Login() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-linear-to-br from-light-bg via-white to-light-bg px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 p-8 sm:p-10 text-center">
-        {/* Logo badge */}
-        <div className="mx-auto h-16 w-16 rounded-2xl bg-primary flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-primary/30">
-          W
-        </div>
+        {/* App logo */}
+        <img
+          src="/pwa-192x192.png"
+          alt="WeTalk"
+          className="mx-auto h-16 w-16 rounded-2xl shadow-lg shadow-primary/30"
+        />
 
         <h1 className="mt-6 text-2xl font-bold text-gray-800">
           Welcome to WeTalk
@@ -52,6 +43,13 @@ export default function Login() {
         <p className="mt-2 text-sm text-gray-500">
           Sign in to start chatting with your friends in real time.
         </p>
+
+        {/* Shown when an admin has banned this account */}
+        {user.banned && (
+          <p className="mt-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm font-medium text-red-600">
+            Your account has been banned by admin.
+          </p>
+        )}
 
         {/* Google sign-in button */}
         <button

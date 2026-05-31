@@ -6,11 +6,19 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ---- USERS ----
-    // Anyone logged in can READ the user list (needed to show who to chat with).
-    // You can only WRITE (create/update) your OWN profile document.
+    // Read is open so both logged-in users (to show who to chat with) and the
+    // admin panel — which has its own username/password gate and NO Firebase
+    // login — can list users.
+    // A signed-in user may only CREATE/UPDATE their OWN profile document.
+    // The admin panel has no Firebase identity, so banning (update) and
+    // removing (delete) an account are left open.
+    // NOTE: open update/delete means anyone could call them. That's acceptable
+    // for this simple/learning setup but is NOT production-safe — for real
+    // security move ban/delete behind Firebase custom claims or the Admin SDK.
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update, delete: if true;
     }
 
     // ---- CHATS ----

@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./App";
 import Login from "./pages/Login";
+import Admin from "./pages/Admin";
 import Private from "./Private";
 
 const routes = createBrowserRouter([
@@ -11,6 +12,11 @@ const routes = createBrowserRouter([
   {
     path: "/login",
     element: <Login />,
+  },
+  {
+    // Standalone admin panel — its own username/password gate, no Google login.
+    path: "/admin",
+    element: <Admin />,
   },
 ]);
 
