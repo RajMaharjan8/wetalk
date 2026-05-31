@@ -78,9 +78,19 @@ async function pushToUsers(recipientUids, title, body) {
 
     const res = await messaging.sendEachForMulticast({
       tokens,
+      // Put the full notification in BOTH the top-level block and the
+      // webpush block. When `webpush.notification` is present FCM uses it
+      // verbatim for the browser, so it must carry title+body itself —
+      // otherwise the browser may receive an empty (invisible) notification.
       notification: { title, body },
       webpush: {
-        notification: { icon: ICON },
+        notification: {
+          title,
+          body,
+          icon: ICON,
+          badge: ICON,
+          requireInteraction: true, // stays until clicked (easier to see)
+        },
         fcmOptions: { link: APP_URL },
       },
     });

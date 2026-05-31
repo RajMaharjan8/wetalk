@@ -56,8 +56,44 @@ those into the browser JS, which would leak it to everyone.
 - If you don't see a token in DevTools: clear the site's notification permission,
   reload, and re-grant it.
 
-## Pushing to staging
+## Staging / production: the Cloud Function (no laptop needed)
 
-When local works, deploy the same send logic as a Cloud Function triggered on
-`chats/{id}` and `groups/{id}` writes, and the client keeps working unchanged.
-(Ask and I'll scaffold `functions/` for this.)
+`functions/index.js` is the deployed version of the sender — same logic, running
+in Google's cloud, triggered directly by Firestore writes. Once deployed you do
+**not** need `npm run notify` at all; push works on staging/prod automatically.
+
+It exports two triggers:
+- `onChatMessage` — fires on `chats/{chatId}` writes (direct messages)
+- `onGroupMessage` — fires on `groups/{groupId}` writes (group messages)
+
+Cloud Functions use the project's built-in service account, so there's **no key
+file to manage** in the cloud.
+
+### Deploy
+
+```bash
+cd functions
+npm install
+npm run deploy          # = firebase deploy --only functions
+```
+
+Requirements:
+- **Firebase Blaze (pay-as-you-go) plan.** Cloud Functions aren't available on
+  the free Spark plan. The free tier on Blaze is generous; you just need a card
+  on file. Upgrade at Firebase Console → ⚙️ → Usage and billing.
+- Logged into the right project: `firebase use wetalk-b1900`.
+
+After deploy, send a message — pushes go out automatically. Watch logs with:
+```bash
+firebase functions:log         # or:  cd functions && npm run logs
+```
+
+### Notification click target
+Notifications open `APP_URL` (default `https://wetalk-b1900.web.app`). If your
+staging app lives elsewhere (e.g. Vercel), set it on the functions before
+deploy and the click-through will point there.
+
+### Do I still need `npm run notify`?
+No. The daemon was only to prove things locally without deploying. Once the
+Cloud Function is live it fully replaces the daemon — you can ignore or delete
+`scripts/push-notifier.mjs` and the `notify` script.
