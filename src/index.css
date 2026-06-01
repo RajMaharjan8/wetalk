@@ -9,3 +9,41 @@
 body {
   font-family: "Poppins", sans-serif;
 }
+
+/* A message bubble easing into place when it first appears. */
+@keyframes msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-msg-in {
+  animation: msg-in 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The floating "jump to latest" button popping in. */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-pop-in {
+  animation: pop-in 0.18s ease-out;
+}
+
+/* Respect users who prefer no motion. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-msg-in,
+  .animate-pop-in {
+    animation: none;
+  }
+}
