@@ -18,6 +18,7 @@ interface Tile {
   price: number | null;
   rent: number | null;
   ruleText: string | null;
+  ruleOwner: string | null; // uid of the player who WROTE this rule (RULE tiles)
   owner: string | null; // uid of the owner, or null
 }
 
@@ -38,7 +39,7 @@ interface GameState {
   createdBy: string;
   playerOrder: string[]; // [player0, player1]
   players: Record<string, Player>;
-  rules: Record<string, string[]>; // uid -> 4 rules
+  rules: Record<string, string[]>; // uid -> the player's custom rules
   board: Tile[];
   currentTurn: string;
   lastRoll: number | null;
@@ -50,6 +51,7 @@ interface GameState {
 const START_MONEY = 1500;
 const PASS_GO = 200;
 const TAX_AMOUNT = 100;
+const RULES_PER_PLAYER = 6;
 
 // Tile factory keeps every field defined (Firestore rejects `undefined`).
 const t = (
@@ -57,7 +59,7 @@ const t = (
   name: string,
   price: number | null = null,
   rent: number | null = null
-): Tile => ({ type, name, price, rent, ruleText: null, owner: null });
+): Tile => ({ type, name, price, rent, ruleText: null, ruleOwner: null, owner: null });
 
 // 20-tile board (a 6×6 ring). The 8 RULE tiles get the players' custom rules.
 const BOARD_TEMPLATE: Tile[] = [
@@ -165,15 +167,25 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-// Drop the 8 custom rules (shuffled) onto the 8 RULE tiles.
-function buildBoard(rulesA: string[], rulesB: string[]): Tile[] {
-  const texts = shuffle([...rulesA, ...rulesB]);
+// Drop the custom rules (shuffled) onto the RULE tiles, tagging each tile with
+// the uid of the player who WROTE it — so a player never gets shown their own
+// rule when they land (we substitute the opponent's at render time).
+function buildBoard(
+  rulesA: string[],
+  rulesB: string[],
+  uidA: string,
+  uidB: string
+): Tile[] {
+  const pool = shuffle([
+    ...rulesA.map((text) => ({ text, owner: uidA })),
+    ...rulesB.map((text) => ({ text, owner: uidB })),
+  ]);
   let i = 0;
-  return BOARD_TEMPLATE.map((tile) =>
-    tile.type === "RULE"
-      ? { ...tile, ruleText: texts[i++] ?? "House rule!" }
-      : { ...tile }
-  );
+  return BOARD_TEMPLATE.map((tile) => {
+    if (tile.type !== "RULE") return { ...tile };
+    const r = pool[i++];
+    return { ...tile, ruleText: r?.text ?? "House rule!", ruleOwner: r?.owner ?? null };
+  });
 }
 
 interface Props {
@@ -195,7 +207,9 @@ export default function MonopolyGame({
 
   const [game, setGame] = useState<GameState | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const [ruleInputs, setRuleInputs] = useState(["", "", "", ""]);
+  const [ruleInputs, setRuleInputs] = useState(() =>
+    Array(RULES_PER_PLAYER).fill("")
+  );
 
   // Animation state: where each token is *displayed* (hops toward the real
   // position), plus a spinning dice while rolling.
@@ -241,20 +255,23 @@ export default function MonopolyGame({
       lastRoll: null,
       pending: null,
       winner: null,
-      log: ["New game! Each player adds 4 rules."],
+      log: [`New game! Each player adds ${RULES_PER_PLAYER} rules.`],
     });
-    setRuleInputs(["", "", "", ""]);
+    setRuleInputs(Array(RULES_PER_PLAYER).fill(""));
     setConfirmReset(false);
   };
 
   const submitRules = () => {
     if (!game) return;
     const cleaned = ruleInputs.map((r) => r.trim()).filter(Boolean);
-    if (cleaned.length < 4) return;
+    if (cleaned.length < RULES_PER_PLAYER) return;
     save({
       ...game,
-      rules: { ...game.rules, [myUid]: cleaned.slice(0, 4) },
-      log: [...game.log, `${myName} locked in their 4 rules.`].slice(-8),
+      rules: { ...game.rules, [myUid]: cleaned.slice(0, RULES_PER_PLAYER) },
+      log: [
+        ...game.log,
+        `${myName} locked in their ${RULES_PER_PLAYER} rules.`,
+      ].slice(-8),
     });
   };
 
@@ -268,15 +285,15 @@ export default function MonopolyGame({
     const a = game.rules[game.playerOrder[0]];
     const b = game.rules[game.playerOrder[1]];
     if (
-      a?.length === 4 &&
-      b?.length === 4 &&
+      a?.length === RULES_PER_PLAYER &&
+      b?.length === RULES_PER_PLAYER &&
       myUid === game.createdBy &&
       !builtRef.current
     ) {
       builtRef.current = true;
       save({
         ...game,
-        board: buildBoard(a, b),
+        board: buildBoard(a, b, game.playerOrder[0], game.playerOrder[1]),
         status: "playing",
         currentTurn: game.playerOrder[0],
         log: [...game.log, "Rules shuffled onto the board. Roll to start!"].slice(-8),
@@ -473,6 +490,31 @@ export default function MonopolyGame({
     save({ ...game, pending: null, currentTurn: otherUid(game), log: game.log.slice(-8) });
   };
 
+  // Sell a property you own back to the bank for its price; it becomes unowned
+  // again. Allowed on your turn while no buy/rule decision is pending; it does
+  // NOT use up your turn, so you can sell and then still roll.
+  const sellProperty = (tileIndex: number) => {
+    if (!game || game.status !== "playing") return;
+    if (game.currentTurn !== myUid || game.pending) return;
+    const board = game.board.map((x) => ({ ...x }));
+    const tile = board[tileIndex];
+    if (tile.type !== "PROPERTY" || tile.owner !== myUid) return;
+    const players = { ...game.players };
+    const me = { ...players[myUid] };
+    const refund = tile.price ?? 0;
+    me.money += refund;
+    tile.owner = null;
+    players[myUid] = me;
+    sfx.buy();
+    vibe([20, 30]);
+    save({
+      ...game,
+      players,
+      board,
+      log: [...game.log, `${me.name} sold ${tile.name} for $${refund}`].slice(-8),
+    });
+  };
+
   // ---- Rendering ----
   if (!loaded) {
     return (
@@ -555,8 +597,8 @@ export default function MonopolyGame({
     );
   }
 
-  const myRulesDone = game.rules[myUid]?.length === 4;
-  const oppRulesDone = game.rules[opponentUid]?.length === 4;
+  const myRulesDone = game.rules[myUid]?.length === RULES_PER_PLAYER;
+  const oppRulesDone = game.rules[opponentUid]?.length === RULES_PER_PLAYER;
 
   // Rule-collection phase
   if (game.status === "collecting_rules") {
@@ -565,7 +607,9 @@ export default function MonopolyGame({
         {Header}
         {ResetBar}
         <div className="flex-1 overflow-y-auto p-5">
-          <h4 className="font-semibold text-gray-800 mb-1">Add your 4 rules</h4>
+          <h4 className="font-semibold text-gray-800 mb-1">
+            Add your {RULES_PER_PLAYER} rules
+          </h4>
           <p className="text-sm text-gray-500 mb-4">
             Anything goes — they'll be shuffled randomly onto the board. When a
             player lands on a rule tile, the rule pops up.
@@ -592,7 +636,9 @@ export default function MonopolyGame({
               ))}
               <button
                 onClick={submitRules}
-                disabled={ruleInputs.filter((r) => r.trim()).length < 4}
+                disabled={
+                  ruleInputs.filter((r) => r.trim()).length < RULES_PER_PLAYER
+                }
                 className="mt-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-black transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Lock in my rules
@@ -615,6 +661,26 @@ export default function MonopolyGame({
   const turnName = game.players[game.currentTurn]?.name ?? "";
   const pendingTile =
     game.pending != null ? game.board[game.pending.tileIndex] : null;
+
+  // You never see a rule you wrote yourself. If the tile you landed on holds
+  // YOUR rule, show one of the opponent's rules instead; otherwise show the
+  // tile's own rule. (Old games without ruleOwner fall back to the tile text.)
+  let pendingRuleText: string | null = null;
+  if (pendingTile && pendingTile.type === "RULE" && game.pending) {
+    if (pendingTile.ruleOwner === myUid) {
+      const oppRules = game.rules[opponentUid] ?? [];
+      pendingRuleText = oppRules.length
+        ? oppRules[game.pending.tileIndex % oppRules.length]
+        : pendingTile.ruleText;
+    } else {
+      pendingRuleText = pendingTile.ruleText;
+    }
+  }
+
+  // Properties this player currently owns (for the sell panel).
+  const myProperties = game.board
+    .map((tile, i) => ({ tile, i }))
+    .filter(({ tile }) => tile.type === "PROPERTY" && tile.owner === myUid);
 
   return (
     <div className="h-full w-full flex flex-col bg-white">
@@ -675,7 +741,7 @@ export default function MonopolyGame({
                     ? "bg-red-50 border-red-200"
                     : "bg-gray-50 border-gray-200"
                 }`}
-                title={tile.type === "RULE" ? tile.ruleText ?? "" : tile.name}
+                title={tile.type === "RULE" ? "Rule" : tile.name}
               >
                 {tile.owner && (
                   <span
@@ -801,7 +867,7 @@ export default function MonopolyGame({
                   ★ House rule
                 </p>
                 <p className="text-sm text-gray-800 mb-2">
-                  {pendingTile.ruleText}
+                  {pendingRuleText}
                 </p>
                 <button
                   onClick={acknowledgeRule}
@@ -811,6 +877,40 @@ export default function MonopolyGame({
                 </button>
               </>
             )}
+          </div>
+        )}
+
+        {/* Your properties — sell any of them back for their price */}
+        {game.status === "playing" && myProperties.length > 0 && (
+          <div className="mt-3 rounded-lg border border-gray-200 p-2">
+            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">
+              Your properties
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {myProperties.map(({ tile, i }) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between gap-2 text-sm"
+                >
+                  <span className="text-gray-700 truncate">
+                    {tile.name}{" "}
+                    <span className="text-gray-400">rent ${tile.rent}</span>
+                  </span>
+                  <button
+                    onClick={() => sellProperty(i)}
+                    disabled={!myTurn || !!game.pending}
+                    className="shrink-0 px-2.5 py-1 bg-amber-500 text-white rounded-lg text-xs cursor-pointer hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={
+                      myTurn && !game.pending
+                        ? `Sell for $${tile.price}`
+                        : "Sell on your turn"
+                    }
+                  >
+                    Sell ${tile.price}
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

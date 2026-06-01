@@ -1,10 +1,11 @@
 // ---------------------------------------------------------------------------
 // WeTalk push notifications — Cloud Functions (the SERVER-SIDE SENDER).
 // ---------------------------------------------------------------------------
-// This replaces the local `npm run notify` daemon. It runs in Google's cloud,
-// triggered directly by Firestore writes, so push works on staging/production
-// with no laptop and no service-account key file (functions use the project's
-// built-in service account automatically).
+// Blaze-plan alternative to the Vercel sender (api/notify.js). It runs in
+// Google's cloud, triggered directly by Firestore writes, so push works with no
+// client POST and no service-account key file (functions use the project's
+// built-in service account automatically). Production currently uses the Vercel
+// function instead, to stay on the free Spark plan.
 //
 // Two triggers:
 //   onChatMessage  — fires on chats/{chatId} writes (direct messages)
