@@ -128,6 +128,35 @@ export async function initPush(uid: string): Promise<void> {
   }
 }
 
+// Show a notification while the app is OPEN (foreground/backgrounded-but-running).
+//
+// IMPORTANT: `new Notification()` THROWS "Illegal constructor" on Android
+// Chrome — the constructor only works on desktop. Mobile browsers require
+// ServiceWorkerRegistration.showNotification() instead. So we always prefer the
+// service worker (works on Android AND desktop) and only fall back to the
+// constructor if, for some reason, no SW is available.
+export async function showAppNotification(
+  title: string,
+  options: NotificationOptions = {},
+): Promise<void> {
+  try {
+    if (!("Notification" in window) || Notification.permission !== "granted") {
+      return;
+    }
+    if ("serviceWorker" in navigator) {
+      // `ready` resolves to the active registration controlling this page
+      // (the PWA worker at "/"). showNotification works on every platform.
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification(title, options);
+      return;
+    }
+    // Desktop-only fallback (no service worker support).
+    new Notification(title, options);
+  } catch (err) {
+    console.debug("[push] in-app notification failed (non-fatal):", err);
+  }
+}
+
 export async function removePush(uid: string): Promise<void> {
   const token = localStorage.getItem(TOKEN_KEY);
   try {

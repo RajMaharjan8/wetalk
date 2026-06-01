@@ -11,6 +11,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "./firebase";
 import { ThemeContext } from "./hooks/ThemeContext";
+import { showAppNotification } from "./notifications";
 
 interface ChatUser {
   uid: string;
@@ -149,16 +150,11 @@ function App() {
         const notLooking = document.hidden || activeUidRef.current !== otherUid;
 
         if (isIncoming && isNew && notifyReadyRef.current && notLooking) {
-          if (
-            "Notification" in window &&
-            Notification.permission === "granted"
-          ) {
-            const sender = usersRef.current.find((u) => u.uid === otherUid);
-            new Notification(`New message from ${sender?.name ?? "someone"}`, {
-              body: data.lastMessage,
-              icon: sender?.photoURL,
-            });
-          }
+          const sender = usersRef.current.find((u) => u.uid === otherUid);
+          showAppNotification(`New message from ${sender?.name ?? "someone"}`, {
+            body: data.lastMessage,
+            icon: sender?.photoURL,
+          });
         }
         notifiedAtRef.current[d.id] = at;
       });
@@ -198,14 +194,9 @@ function App() {
           notLooking &&
           g.lastMessage
         ) {
-          if (
-            "Notification" in window &&
-            Notification.permission === "granted"
-          ) {
-            new Notification(g.name, {
-              body: `${g.lastSenderName ?? "Someone"}: ${g.lastMessage}`,
-            });
-          }
+          showAppNotification(g.name, {
+            body: `${g.lastSenderName ?? "Someone"}: ${g.lastMessage}`,
+          });
         }
         notifiedAtRef.current[g.id] = at;
       });
