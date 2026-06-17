@@ -2,6 +2,7 @@ import SendIcon from "@mui/icons-material/Send";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import GroupsIcon from "@mui/icons-material/Groups";
 import LogoutIcon from "@mui/icons-material/Logout";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlineRounded";
 import GroupInfoModal from "./GroupInfoModal";
 import { useContext, useEffect, useRef, useState } from "react";
 import {
@@ -70,7 +71,11 @@ export default function GroupChatroom({
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [confirmingLeave, setConfirmingLeave] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+
+  // Only the group's creator may delete the whole group for everyone.
+  const isCreator = group.createdBy === myUid;
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Real-time messages, sorted in JS so mixed time formats still work.
@@ -161,16 +166,32 @@ export default function GroupChatroom({
     }
   };
 
+  // Delete the entire group for everyone — creator only. Removes all messages
+  // then the group doc itself.
+  const deleteGroup = async () => {
+    setConfirmingDelete(false);
+    if (!isCreator) return;
+    try {
+      const messagesRef = collection(db, "groups", group.id, "messages");
+      const snap = await getDocs(messagesRef);
+      await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+      await deleteDoc(doc(db, "groups", group.id));
+      onLeft();
+    } catch (error) {
+      console.error("Could not delete group:", error);
+    }
+  };
+
   return (
-    <div className="bg-white h-full w-full flex flex-col">
+    <div className="bg-white dark:bg-stone-900 h-full w-full flex flex-col">
       {/* Header */}
-      <div className="w-full bg-light-bg border-b border-gray-200 shrink-0">
+      <div className="w-full bg-light-bg dark:bg-stone-900 border-b border-gray-200 dark:border-stone-700 shrink-0">
         <div className="flex gap-3 items-center px-4 sm:px-8 py-4">
           <button
             onClick={onBack}
             className="lg:hidden p-1 rounded-full hover:bg-light-text transition-colors shrink-0"
           >
-            <ArrowBackIcon fontSize="small" className="text-gray-600" />
+            <ArrowBackIcon fontSize="small" className="text-gray-600 dark:text-stone-300" />
           </button>
 
           {/* avatar + name open the group info / management panel */}
@@ -182,7 +203,7 @@ export default function GroupChatroom({
             <div className="h-12 w-12 shrink-0 rounded-full bg-primary flex items-center justify-center text-white">
               <GroupsIcon />
             </div>
-            <div className="text-gray-600 min-w-0 flex-1">
+            <div className="text-gray-600 dark:text-stone-300 min-w-0 flex-1">
               <h3 className="font-semibold truncate">{group.name}</h3>
               <span className="font-light text-xs sm:text-sm">
                 {group.members.length}{" "}
@@ -191,11 +212,28 @@ export default function GroupChatroom({
             </div>
           </button>
 
+          {/* Delete group — creator only */}
+          {isCreator && (
+            <button
+              onClick={() => {
+                setConfirmingLeave(false);
+                setConfirmingDelete(true);
+              }}
+              title="Delete group"
+              className="p-2 rounded-full text-gray-500 dark:text-stone-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/50 dark:hover:text-red-400 transition-colors cursor-pointer shrink-0"
+            >
+              <DeleteOutlineIcon fontSize="small" />
+            </button>
+          )}
+
           {/* Leave group */}
           <button
-            onClick={() => setConfirmingLeave(true)}
+            onClick={() => {
+              setConfirmingDelete(false);
+              setConfirmingLeave(true);
+            }}
             title="Leave group"
-            className="p-2 rounded-full text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer shrink-0"
+            className="p-2 rounded-full text-gray-500 dark:text-stone-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/50 dark:hover:text-red-400 transition-colors cursor-pointer shrink-0"
           >
             <LogoutIcon fontSize="small" />
           </button>
@@ -203,13 +241,13 @@ export default function GroupChatroom({
 
         {/* In-app leave confirmation */}
         {confirmingLeave && (
-          <div className="flex items-center gap-3 px-4 sm:px-8 py-3 bg-red-50 border-t border-red-100">
-            <span className="text-sm text-red-700 flex-1">
+          <div className="flex items-center gap-3 px-4 sm:px-8 py-3 bg-red-50 dark:bg-red-950/40 border-t border-red-100 dark:border-red-900">
+            <span className="text-sm text-red-700 dark:text-red-300 flex-1">
               Leave "{group.name}"? You'll stop receiving its messages.
             </span>
             <button
               onClick={() => setConfirmingLeave(false)}
-              className="px-3 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-white transition-colors cursor-pointer shrink-0"
+              className="px-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-800 transition-colors cursor-pointer shrink-0"
             >
               Cancel
             </button>
@@ -221,12 +259,34 @@ export default function GroupChatroom({
             </button>
           </div>
         )}
+
+        {/* In-app delete confirmation (creator only) */}
+        {confirmingDelete && (
+          <div className="flex items-center gap-3 px-4 sm:px-8 py-3 bg-red-50 dark:bg-red-950/40 border-t border-red-100 dark:border-red-900">
+            <span className="text-sm text-red-700 dark:text-red-300 flex-1">
+              Delete "{group.name}" for everyone? This removes the group and all
+              its messages — it can't be undone.
+            </span>
+            <button
+              onClick={() => setConfirmingDelete(false)}
+              className="px-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-800 transition-colors cursor-pointer shrink-0"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={deleteGroup}
+              className="px-3 py-1.5 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700 transition-colors cursor-pointer shrink-0"
+            >
+              Delete group
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-2 py-2 bg-white">
+      <div className="flex-1 overflow-y-auto px-2 py-2 bg-white dark:bg-stone-900">
         {messages.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+          <div className="h-full flex items-center justify-center text-gray-400 dark:text-stone-400 text-sm">
             No messages yet — say hi 👋
           </div>
         ) : (
@@ -263,7 +323,7 @@ export default function GroupChatroom({
                   className={`max-w-[75%] sm:max-w-xs px-4 py-2 rounded-2xl m-1.5 text-sm shadow-sm ${
                     isSent
                       ? "bg-primary text-white rounded-br-sm"
-                      : "bg-light-bg text-gray-800 rounded-bl-sm"
+                      : "bg-light-bg text-gray-800 dark:bg-stone-800 dark:text-stone-100 rounded-bl-sm"
                   }`}
                 >
                   {/* sender name above other people's messages */}
@@ -282,17 +342,17 @@ export default function GroupChatroom({
       </div>
 
       {/* Input */}
-      <div className="shrink-0 p-3 bg-light-bg border-t border-gray-200">
+      <div className="shrink-0 p-3 bg-light-bg dark:bg-stone-900 border-t border-gray-200 dark:border-stone-700">
         <form
           onSubmit={sendMessage}
-          className="flex items-center bg-white w-full h-12 border border-[#ddd] rounded-2xl overflow-hidden outline-primary has-[input:focus-within]:outline-2"
+          className="flex items-center bg-white dark:bg-stone-800 w-full h-12 border border-[#ddd] dark:border-stone-700 rounded-2xl overflow-hidden outline-primary has-[input:focus-within]:outline-2"
         >
           <input
             type="text"
             value={message}
             disabled={sending}
             placeholder="Type a message..."
-            className="focus:outline-none flex-1 ml-4 text-sm disabled:cursor-not-allowed bg-transparent"
+            className="focus:outline-none flex-1 ml-4 text-sm dark:text-stone-100 disabled:cursor-not-allowed bg-transparent"
             onChange={(e) => setMessage(e.target.value)}
             onFocus={() =>
               setTimeout(

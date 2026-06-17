@@ -117,18 +117,18 @@ export default function GroupInfoModal({
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-md rounded-2xl shadow-xl flex flex-col max-h-[85vh] overflow-hidden"
+        className="bg-white dark:bg-stone-900 w-full max-w-md rounded-2xl shadow-xl flex flex-col max-h-[85vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-200">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-200 dark:border-stone-700">
           <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-white shrink-0">
             <GroupsIcon fontSize="small" />
           </div>
-          <h2 className="font-semibold text-gray-800 flex-1">Group info</h2>
+          <h2 className="font-semibold text-gray-800 dark:text-stone-100 flex-1">Group info</h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-full text-gray-500 hover:bg-gray-100 cursor-pointer"
+            className="p-1 rounded-full text-gray-500 dark:text-stone-400 hover:bg-gray-100 dark:hover:bg-stone-800 cursor-pointer"
           >
             <CloseIcon fontSize="small" />
           </button>
@@ -136,7 +136,7 @@ export default function GroupInfoModal({
 
         {/* Name (editable by admin) */}
         <div className="px-5 pt-4">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+          <span className="text-xs font-medium text-gray-500 dark:text-stone-400 uppercase tracking-wide">
             Group name
           </span>
           {editingName ? (
@@ -147,7 +147,7 @@ export default function GroupInfoModal({
                 autoFocus
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && saveName()}
-                className="flex-1 border border-[#ddd] rounded-xl px-3 py-2 text-sm outline-primary focus:outline-2"
+                className="flex-1 border border-[#ddd] dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 rounded-xl px-3 py-2 text-sm outline-primary focus:outline-2"
               />
               <button
                 onClick={saveName}
@@ -159,7 +159,7 @@ export default function GroupInfoModal({
             </div>
           ) : (
             <div className="flex items-center gap-2 mt-1">
-              <p className="flex-1 text-gray-800 font-medium">{group.name}</p>
+              <p className="flex-1 text-gray-800 dark:text-stone-100 font-medium">{group.name}</p>
               {isAdmin && (
                 <button
                   onClick={() => {
@@ -167,7 +167,7 @@ export default function GroupInfoModal({
                     setEditingName(true);
                   }}
                   title="Rename group"
-                  className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 cursor-pointer"
+                  className="p-1.5 rounded-lg text-gray-500 dark:text-stone-400 hover:bg-gray-100 dark:hover:bg-stone-800 cursor-pointer"
                 >
                   <EditIcon style={{ fontSize: 18 }} />
                 </button>
@@ -178,7 +178,7 @@ export default function GroupInfoModal({
 
         {/* Members */}
         <div className="px-5 pt-4 pb-1 flex items-center justify-between">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+          <span className="text-xs font-medium text-gray-500 dark:text-stone-400 uppercase tracking-wide">
             {group.members.length} members
           </span>
           {isAdmin && (
@@ -200,18 +200,18 @@ export default function GroupInfoModal({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search people to add..."
-              className="w-full border border-[#ddd] rounded-xl px-4 py-2 text-sm outline-primary focus:outline-2 mb-2"
+              className="w-full border border-[#ddd] dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 rounded-xl px-4 py-2 text-sm outline-primary focus:outline-2 mb-2"
             />
             <ul className="max-h-40 overflow-y-auto">
               {candidates.length === 0 ? (
-                <li className="text-center text-xs text-gray-400 py-3">
+                <li className="text-center text-xs text-gray-400 dark:text-stone-400 py-3">
                   Everyone is already in the group
                 </li>
               ) : (
                 candidates.map((u) => (
                   <li
                     key={u.uid}
-                    className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50"
+                    className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-stone-800"
                   >
                     <div className="h-9 w-9 rounded-full bg-primary overflow-hidden flex items-center justify-center text-white text-xs shrink-0">
                       {u.photoURL ? (
@@ -225,7 +225,7 @@ export default function GroupInfoModal({
                         initialsOf(u.name)
                       )}
                     </div>
-                    <span className="text-sm text-gray-800 flex-1 truncate">
+                    <span className="text-sm text-gray-800 dark:text-stone-100 flex-1 truncate">
                       {u.name}
                     </span>
                     <button
@@ -250,7 +250,7 @@ export default function GroupInfoModal({
             return (
               <li
                 key={m.uid}
-                className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50"
+                className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-stone-800"
               >
                 <div className="h-10 w-10 rounded-full bg-primary overflow-hidden flex items-center justify-center text-white text-sm shrink-0">
                   {m.photoURL ? (
@@ -265,12 +265,12 @@ export default function GroupInfoModal({
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-800 truncate">
+                  <p className="text-sm font-medium text-gray-800 dark:text-stone-100 truncate">
                     {m.name}
                     {isMe && " (You)"}
                   </p>
                   {m.email && (
-                    <p className="text-xs text-gray-400 truncate">{m.email}</p>
+                    <p className="text-xs text-gray-400 dark:text-stone-400 truncate">{m.email}</p>
                   )}
                 </div>
                 {isCreator ? (
@@ -284,7 +284,7 @@ export default function GroupInfoModal({
                       onClick={() => removeMember(m.uid)}
                       disabled={busy}
                       title="Remove from group"
-                      className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 cursor-pointer disabled:opacity-50 shrink-0"
+                      className="p-1.5 rounded-lg text-gray-400 dark:text-stone-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/50 dark:hover:text-red-400 cursor-pointer disabled:opacity-50 shrink-0"
                     >
                       <PersonRemoveIcon style={{ fontSize: 18 }} />
                     </button>
@@ -296,7 +296,7 @@ export default function GroupInfoModal({
         </ul>
 
         {!isAdmin && (
-          <p className="px-5 py-3 text-xs text-gray-400 border-t border-gray-100">
+          <p className="px-5 py-3 text-xs text-gray-400 dark:text-stone-400 border-t border-gray-100 dark:border-stone-700">
             Only the group admin can rename the group or add/remove members.
           </p>
         )}

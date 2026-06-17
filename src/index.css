@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Class-based dark mode: `dark:` utilities apply when an ancestor (we use
+   <html>) has the `dark` class. Toggled by the useDarkMode hook. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-primary: #8c7ae6;
   --color-secondary: #9c88ff;
@@ -8,6 +12,25 @@
 }
 body {
   font-family: "Poppins", sans-serif;
+}
+
+/* In dark mode, paint the page behind the app dark so any gaps/safe-area or
+   overscroll show dark, not white. */
+html.dark,
+html.dark body {
+  background-color: #1c1917; /* stone-900 */
+}
+
+/* Lock the app to the viewport so the only thing that scrolls is the inner
+   message/dare list (flex-1 + min-h-0), never the whole page. Without this,
+   #root grows to content height and inner overflow-y-auto regions never get a
+   bounded height to scroll within. */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
 }
 
 /* A message bubble easing into place when it first appears. */

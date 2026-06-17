@@ -1,8 +1,9 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import SportsMmaIcon from "@mui/icons-material/SportsMma";
+import CloseIcon from "@mui/icons-material/Close";
 import { db } from "../../firebase";
 import { ThemeContext } from "../../hooks/ThemeContext";
 
@@ -14,6 +15,11 @@ import { ThemeContext } from "../../hooks/ThemeContext";
 // each round both players throw a hand, the loser must perform a random task
 // from the WINNER's task list. Best score after 3 rounds wins the game. Ties
 // don't count as a round and are simply re-thrown.
+//
+// Headline rule (matches Monopoly): when a round has a loser, the match FREEZES
+// on the dare. The loser performs it for real and taps "I did it"; then the
+// WINNER must confirm ("did they really?") before the next round can begin.
+// Nothing moves until they decide — and flaking costs you the round you won.
 
 type Choice = "rock" | "paper" | "scissors";
 
@@ -28,6 +34,10 @@ interface Reveal {
   winner: string | null;
   loser: string | null;
   task: string | null;
+  // Dare flow: loser flips claimedDone, then the winner sets confirmed
+  // true (did it) or false (flaked → the winner's round point is revoked).
+  claimedDone: boolean;
+  confirmed: boolean | null;
 }
 
 interface RPSState {
@@ -103,19 +113,32 @@ function tone(
   }
 }
 const sfx = {
-  throw: () => tone(300, 70, "square", 0.12),
+  // "Rock… paper… scissors — shoot!" three rising beats then a pop.
+  throw: () => {
+    [0, 0.08, 0.16].forEach((d) => tone(360, 50, "square", 0.1, d));
+    tone(560, 80, "triangle", 0.13, 0.26);
+  },
+  // Bright rising win sting.
   win: () => {
-    tone(523, 90, "triangle", 0.15);
-    tone(784, 130, "triangle", 0.15, 0.09);
+    tone(659, 90, "triangle", 0.15);
+    tone(880, 110, "triangle", 0.15, 0.08);
+    tone(1175, 150, "triangle", 0.14, 0.17);
   },
+  // Descending "aww" for a loss.
   lose: () => {
-    tone(380, 120, "sawtooth", 0.12);
-    tone(240, 160, "sawtooth", 0.12, 0.1);
+    tone(392, 130, "sawtooth", 0.13);
+    tone(294, 170, "sawtooth", 0.13, 0.11);
+    tone(196, 220, "sawtooth", 0.12, 0.24);
   },
-  tie: () => tone(440, 110, "sine", 0.12),
+  // Flat double-blip for a tie.
+  tie: () => {
+    tone(440, 90, "sine", 0.12);
+    tone(440, 90, "sine", 0.12, 0.13);
+  },
+  // Triumphant match-win fanfare.
   fanfare: () =>
-    [523, 659, 784, 1047].forEach((f, i) =>
-      tone(f, 180, "triangle", 0.16, i * 0.12)
+    [523, 659, 784, 1047, 1319, 1047, 1319].forEach((f, i) =>
+      tone(f, 170, "triangle", 0.16, i * 0.11)
     ),
 };
 
@@ -132,6 +155,8 @@ interface Props {
   opponentUid: string;
   opponentName: string;
   onClose: () => void;
+  // Called when the player quits — clears the chat's "play" invite card too.
+  onQuit: () => void;
 }
 
 export default function RockPaperScissors({
@@ -139,6 +164,7 @@ export default function RockPaperScissors({
   opponentUid,
   opponentName,
   onClose,
+  onQuit,
 }: Props) {
   const { currentUser } = useContext(ThemeContext);
   const myUid: string = currentUser.uid;
@@ -163,6 +189,29 @@ export default function RockPaperScissors({
   const save = (g: RPSState) => setDoc(ref, g);
   const otherUid = (g: RPSState) =>
     g.playerOrder.find((u) => u !== myUid) as string;
+
+  // Leaving a FINISHED match deletes its Firestore doc so old matches (tasks
+  // and all) don't pile up. An in-progress match is left intact.
+  const closeGame = () => {
+    if (game?.status === "ended") {
+      deleteDoc(ref).catch(() => {
+        /* best-effort cleanup */
+      });
+      onQuit(); // match's over — also clear the chat's invite card
+      return;
+    }
+    onClose();
+  };
+
+  // Quit ends the match for BOTH players and deletes the doc (tasks and all).
+  const [confirmQuit, setConfirmQuit] = useState(false);
+  const quitGame = () => {
+    setConfirmQuit(false);
+    deleteDoc(ref).catch(() => {
+      /* best-effort cleanup */
+    });
+    onQuit();
+  };
 
   // ---- Start / reset: a fresh game back to the task-collection phase ----
   const startGame = () => {
@@ -291,20 +340,81 @@ export default function RockPaperScissors({
     let reveal: Reveal;
 
     if (outcome === 0) {
-      reveal = { winner: null, loser: null, task: null };
+      reveal = {
+        winner: null,
+        loser: null,
+        task: null,
+        claimedDone: false,
+        confirmed: null,
+      };
       log.push(`Round ${game.round}: both threw ${EMOJI[choice]} — tie, re-throw!`);
     } else {
       const winnerUid = outcome === 1 ? myUid : oppUid;
       const loserUid = outcome === 1 ? oppUid : myUid;
       players[winnerUid].score += 1;
       const task = pickTask(game.tasks[winnerUid] ?? []);
-      reveal = { winner: winnerUid, loser: loserUid, task };
+      reveal = {
+        winner: winnerUid,
+        loser: loserUid,
+        task,
+        claimedDone: false,
+        confirmed: null,
+      };
       log.push(
         `Round ${game.round}: ${players[winnerUid].name} ${EMOJI[winnerUid === myUid ? choice : oppChoice]} beats ${EMOJI[winnerUid === myUid ? oppChoice : choice]} ${players[loserUid].name}`
       );
     }
 
     save({ ...game, players, choices, reveal, log: log.slice(-8) });
+  };
+
+  // ---- Dare flow (mirrors Monopoly) ----
+  // Step 1: the LOSER, after doing the dare for real, taps "I did it". This
+  // does not advance the round — it just asks the winner to confirm.
+  const claimTaskDone = () => {
+    if (!game?.reveal || game.reveal.winner === null) return;
+    if (game.reveal.loser !== myUid || game.reveal.claimedDone) return;
+    save({
+      ...game,
+      reveal: { ...game.reveal, claimedDone: true },
+      log: [
+        ...game.log,
+        `${myName} says they did the dare — waiting on ${
+          game.players[game.reveal.winner]?.name
+        } to confirm…`,
+      ].slice(-8),
+    });
+  };
+
+  // Step 2: only the WINNER judges. "no" revokes the round point they earned,
+  // so flaking actually costs the loser the round.
+  const judgeTask = (didIt: boolean) => {
+    if (!game?.reveal || game.reveal.winner === null) return;
+    if (game.reveal.winner !== myUid) return; // only the winner may judge
+    if (!game.reveal.claimedDone) return; // loser must claim first
+
+    const players = {
+      ...game.players,
+      [myUid]: { ...game.players[myUid] },
+    };
+    const log = [...game.log];
+    if (didIt) {
+      sfx.win();
+      vibe([20, 30, 50]);
+      log.push(`${myName} confirmed the dare was done.`);
+    } else {
+      // Revoke the point the winner was awarded when the round resolved.
+      players[myUid].score = Math.max(0, players[myUid].score - 1);
+      sfx.lose();
+      vibe([40, 30, 40]);
+      log.push(`${myName} says they flaked — round point revoked!`);
+    }
+    save({
+      ...game,
+      players,
+      reveal: { ...game.reveal, confirmed: didIt },
+      log: log.slice(-8),
+    });
   };
 
   // ---- Advance to the next round (or end the match). Idempotent: both
@@ -321,6 +431,9 @@ export default function RockPaperScissors({
       return;
     }
 
+    // A decisive round can't advance until the winner has confirmed the dare.
+    if (game.reveal.confirmed === null) return;
+
     const nextRoundNo = game.round + 1;
     if (nextRoundNo > ROUNDS) {
       const [p0, p1] = game.playerOrder;
@@ -336,7 +449,7 @@ export default function RockPaperScissors({
         log: [
           ...game.log,
           winner
-            ? `Match over — ${game.players[winner].name} wins ${Math.max(s0, s1)}–${Math.min(s0, s1)}! 🎉`
+            ? `Match over — ${game.players[winner].name} wins ${Math.max(s0, s1)}–${Math.min(s0, s1)}!`
             : `Match over — it's a draw ${s0}–${s1}!`,
         ].slice(-8),
       });
@@ -355,17 +468,17 @@ export default function RockPaperScissors({
   // ---- Rendering ----
   if (!loaded) {
     return (
-      <div className="h-full w-full flex items-center justify-center text-gray-400">
+      <div className="h-full w-full flex items-center justify-center text-gray-400 dark:text-stone-400">
         Loading game…
       </div>
     );
   }
 
   const Header = (
-    <div className="flex items-center gap-2 px-4 py-3 bg-light-bg border-b border-gray-200 shrink-0">
+    <div className="flex items-center gap-2 px-4 py-3 bg-light-bg dark:bg-stone-900 border-b border-gray-200 dark:border-stone-700 shrink-0">
       <button
-        onClick={onClose}
-        className="flex items-center gap-1.5 pl-1.5 pr-3 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer"
+        onClick={closeGame}
+        className="flex items-center gap-1.5 pl-1.5 pr-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-stone-300 hover:bg-gray-200 dark:hover:bg-stone-700 transition-colors cursor-pointer"
         title="Back to chat"
       >
         <ArrowBackIcon fontSize="small" />
@@ -373,29 +486,66 @@ export default function RockPaperScissors({
       </button>
       <div className="flex-1" />
       {game && (
-        <button
-          onClick={() => setConfirmReset(true)}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer"
-          title="Reset game"
-        >
-          <RestartAltIcon fontSize="small" />
-          <span className="hidden sm:inline">Reset</span>
-        </button>
+        <>
+          <button
+            onClick={() => {
+              setConfirmReset(false);
+              setConfirmQuit(true);
+            }}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-sm text-gray-600 dark:text-stone-300 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 transition-colors cursor-pointer"
+            title="Quit match"
+          >
+            <CloseIcon fontSize="small" />
+            <span className="hidden sm:inline">Quit</span>
+          </button>
+          <button
+            onClick={() => {
+              setConfirmQuit(false);
+              setConfirmReset(true);
+            }}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-sm text-gray-600 dark:text-stone-300 hover:bg-gray-200 dark:hover:bg-stone-700 transition-colors cursor-pointer"
+            title="Reset game"
+          >
+            <RestartAltIcon fontSize="small" />
+            <span className="hidden sm:inline">Reset</span>
+          </button>
+        </>
       )}
       <SportsMmaIcon className="text-primary" />
-      <h3 className="font-semibold text-gray-800">Rock · Paper · Scissors</h3>
+      <h3 className="font-semibold text-gray-800 dark:text-stone-100">Rock · Paper · Scissors</h3>
+    </div>
+  );
+
+  // Quit confirmation bar — ends the match for BOTH players and deletes it.
+  const QuitBar = confirmQuit && (
+    <div className="flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-950/40 border-b border-red-100 dark:border-red-900 shrink-0">
+      <span className="text-sm text-red-700 dark:text-red-300 flex-1">
+        Quit and end this match for both players? It can't be resumed.
+      </span>
+      <button
+        onClick={() => setConfirmQuit(false)}
+        className="px-3 py-1.5 text-sm text-gray-600 dark:text-stone-300 rounded-lg hover:bg-white dark:hover:bg-stone-800 cursor-pointer"
+      >
+        Cancel
+      </button>
+      <button
+        onClick={quitGame}
+        className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 cursor-pointer"
+      >
+        Quit match
+      </button>
     </div>
   );
 
   // Reset confirmation bar — restarting wipes the match for BOTH players.
   const ResetBar = confirmReset && (
-    <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border-b border-amber-100 shrink-0">
-      <span className="text-sm text-amber-800 flex-1">
+    <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-100 dark:border-amber-900 shrink-0">
+      <span className="text-sm text-amber-800 dark:text-amber-200 flex-1">
         Start a brand-new match? Both players add new dares.
       </span>
       <button
         onClick={() => setConfirmReset(false)}
-        className="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-gray-200 cursor-pointer"
+        className="px-3 py-1.5 text-sm text-gray-600 dark:text-stone-300 rounded-lg hover:bg-gray-200 dark:hover:bg-stone-700 cursor-pointer"
       >
         Cancel
       </button>
@@ -411,11 +561,11 @@ export default function RockPaperScissors({
   // Lobby — no game yet
   if (!game) {
     return (
-      <div className="h-full w-full flex flex-col bg-white">
+      <div className="h-full w-full flex flex-col bg-white dark:bg-stone-900">
         {Header}
         <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6 text-center">
           <div className="text-5xl">✊✋✌️</div>
-          <p className="text-gray-600 max-w-xs">
+          <p className="text-gray-600 dark:text-stone-300 max-w-xs">
             Play a best-of-{ROUNDS} Rock · Paper · Scissors with{" "}
             <span className="font-semibold">{opponentName}</span>. You'll each
             add {TASKS_PER_PLAYER} dares — the loser of every round performs one
@@ -438,21 +588,22 @@ export default function RockPaperScissors({
   // Task-collection phase
   if (game.status === "collecting_tasks") {
     return (
-      <div className="h-full w-full flex flex-col bg-white">
+      <div className="h-full w-full flex flex-col bg-white dark:bg-stone-900">
         {Header}
         {ResetBar}
-        <div className="flex-1 overflow-y-auto p-5">
-          <h4 className="font-semibold text-gray-800 mb-1">
+        {QuitBar}
+        <div className="flex-1 min-h-0 overflow-y-auto p-5 pb-28">
+          <h4 className="font-semibold text-gray-800 dark:text-stone-100 mb-1">
             Add your {TASKS_PER_PLAYER} dares
           </h4>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-gray-500 dark:text-stone-400 mb-4">
             Whoever loses a round has to do one of these — picked at random. Keep
             them fun!
           </p>
 
           {myTasksDone ? (
-            <div className="rounded-lg bg-green-50 border border-green-200 p-4 text-sm text-green-700">
-              ✓ Your dares are in. Waiting for {opponentName}…
+            <div className="rounded-lg bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-900 p-4 text-sm text-green-700 dark:text-green-300">
+              Your dares are in. Waiting for {opponentName}…
             </div>
           ) : (
             <div className="flex flex-col gap-2">
@@ -466,7 +617,7 @@ export default function RockPaperScissors({
                     setTaskInputs(next);
                   }}
                   placeholder={`Dare ${i + 1} (e.g. "Sing a song")`}
-                  className="w-full border border-[#ddd] rounded-lg p-2 text-sm outline-primary focus-within:outline-2 bg-white"
+                  className="w-full border border-[#ddd] dark:border-stone-700 rounded-lg p-2 text-sm outline-primary focus-within:outline-2 bg-white dark:bg-stone-800 dark:text-stone-100"
                 />
               ))}
               <button
@@ -481,8 +632,8 @@ export default function RockPaperScissors({
             </div>
           )}
 
-          <div className="mt-5 text-sm text-gray-500">
-            {opponentName}: {oppTasksDone ? "✓ ready" : "still adding dares…"}
+          <div className="mt-5 text-sm text-gray-500 dark:text-stone-400">
+            {opponentName}: {oppTasksDone ? "ready" : "still adding dares…"}
           </div>
         </div>
       </div>
@@ -498,20 +649,21 @@ export default function RockPaperScissors({
   const waitingForOpp = !!myChoice && !oppChoice && !reveal;
 
   return (
-    <div className="h-full w-full flex flex-col bg-white">
+    <div className="h-full w-full flex flex-col bg-white dark:bg-stone-900">
       {Header}
       {ResetBar}
+      {QuitBar}
 
       {/* Scoreboard */}
-      <div className="flex gap-2 px-3 py-2 border-b border-gray-100 shrink-0">
+      <div className="flex gap-2 px-3 py-2 border-b border-gray-100 dark:border-stone-700 shrink-0">
         {[me, opp].map(
           (p) =>
             p && (
               <div
                 key={p.uid}
-                className="flex-1 rounded-lg p-2 text-sm border border-gray-200 flex items-center justify-between"
+                className="flex-1 rounded-lg p-2 text-sm border border-gray-200 dark:border-stone-700 flex items-center justify-between"
               >
-                <span className="font-semibold text-gray-800 truncate">
+                <span className="font-semibold text-gray-800 dark:text-stone-100 truncate">
                   {p.uid === myUid ? "You" : p.name}
                 </span>
                 <span className="text-lg font-bold text-primary">{p.score}</span>
@@ -520,18 +672,20 @@ export default function RockPaperScissors({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 pb-28 flex flex-col items-center">
         {game.status === "ended" ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center py-8">
-            <div className="text-5xl">🏆</div>
-            <div className="text-xl font-bold text-gray-800">
+            <div className="text-sm uppercase tracking-[0.2em] text-gray-400 dark:text-stone-400">
+              Match complete
+            </div>
+            <div className="text-xl font-bold text-gray-800 dark:text-stone-100">
               {game.winner === null
                 ? "It's a draw!"
                 : game.winner === myUid
                 ? "You win the match!"
                 : `${opp?.name} wins the match!`}
             </div>
-            <div className="text-gray-500">
+            <div className="text-gray-500 dark:text-stone-400">
               Final score {me?.score}–{opp?.score}
             </div>
             <button
@@ -543,7 +697,7 @@ export default function RockPaperScissors({
           </div>
         ) : (
           <>
-            <div className="text-sm font-semibold text-gray-500 mb-4">
+            <div className="text-sm font-semibold text-gray-500 dark:text-stone-400 mb-4">
               Round {game.round} of {ROUNDS}
             </div>
 
@@ -551,14 +705,14 @@ export default function RockPaperScissors({
             <div className="flex items-center justify-center gap-6 mb-6">
               <div className="flex flex-col items-center gap-2">
                 {/* You always see your own hand. */}
-                <div className="h-20 w-20 rounded-2xl border-2 border-gray-200 flex items-center justify-center text-4xl bg-gray-50">
+                <div className="h-20 w-20 rounded-2xl border-2 border-gray-200 dark:border-stone-700 flex items-center justify-center text-4xl bg-gray-50 dark:bg-stone-800">
                   {myChoice ? EMOJI[myChoice] : "…"}
                 </div>
-                <span className="text-xs text-gray-500 max-w-20 truncate">
+                <span className="text-xs text-gray-500 dark:text-stone-400 max-w-20 truncate">
                   You
                 </span>
               </div>
-              <span className="text-gray-300 font-bold text-lg">vs</span>
+              <span className="text-gray-300 dark:text-stone-600 font-bold text-lg">vs</span>
               <div className="flex flex-col items-center gap-2">
                 {/* Opponent's hand stays hidden until BOTH have thrown
                     (reveal is only set once both choices are in). A pulsing
@@ -567,12 +721,12 @@ export default function RockPaperScissors({
                   className={`h-20 w-20 rounded-2xl border-2 flex items-center justify-center text-4xl transition-all ${
                     oppChoice && !reveal
                       ? "border-primary bg-primary/5 animate-pulse"
-                      : "border-gray-200 bg-gray-50"
+                      : "border-gray-200 dark:border-stone-700 bg-gray-50 dark:bg-stone-800"
                   }`}
                 >
-                  {reveal && oppChoice ? EMOJI[oppChoice] : oppChoice ? "⏱️" : "…"}
+                  {reveal && oppChoice ? EMOJI[oppChoice] : oppChoice ? "•" : "…"}
                 </div>
-                <span className="text-xs text-gray-500 max-w-20 truncate">
+                <span className="text-xs text-gray-500 dark:text-stone-400 max-w-20 truncate">
                   {oppChoice && !reveal ? "Ready" : opp?.name}
                 </span>
               </div>
@@ -582,49 +736,131 @@ export default function RockPaperScissors({
             {reveal ? (
               <div className="w-full max-w-sm">
                 {reveal.winner === null ? (
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center">
-                    <p className="text-gray-700 font-semibold">Tie! 🤝</p>
-                    <p className="text-sm text-gray-500">Same hand — throw again.</p>
-                  </div>
+                  <>
+                    <div className="rounded-lg border border-gray-200 dark:border-stone-700 bg-gray-50 dark:bg-stone-800 p-4 text-center">
+                      <p className="text-gray-700 dark:text-stone-200 font-semibold">Tie!</p>
+                      <p className="text-sm text-gray-500 dark:text-stone-400">
+                        Same hand — throw again.
+                      </p>
+                    </div>
+                    <button
+                      onClick={nextRound}
+                      className="mt-3 w-full px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-black transition-colors cursor-pointer"
+                    >
+                      Throw again
+                    </button>
+                  </>
                 ) : (
-                  <div
-                    className={`rounded-lg border p-4 text-center ${
-                      reveal.winner === myUid
-                        ? "border-green-200 bg-green-50"
-                        : "border-amber-200 bg-amber-50"
-                    }`}
-                  >
-                    <p className="font-semibold text-gray-800 mb-1">
-                      {reveal.winner === myUid
-                        ? "You won the round! 🎉"
-                        : `${opp?.name} won the round.`}
-                    </p>
-                    <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">
-                      {reveal.loser === myUid
-                        ? "Your dare"
-                        : `${game.players[reveal.loser ?? ""]?.name}'s dare`}
-                    </p>
-                    <p className="text-sm text-gray-800">{reveal.task}</p>
-                  </div>
+                  (() => {
+                    const iWon = reveal.winner === myUid;
+                    const iLost = reveal.loser === myUid;
+                    const loserName =
+                      game.players[reveal.loser ?? ""]?.name ?? "";
+                    return (
+                      <>
+                        <div
+                          className={`rounded-lg border p-4 text-center ${
+                            iWon
+                              ? "border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/40"
+                              : "border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40"
+                          }`}
+                        >
+                          <p className="font-semibold text-gray-800 dark:text-stone-100 mb-2">
+                            {iWon
+                              ? "You won the round!"
+                              : `${opp?.name} won the round.`}
+                          </p>
+                          <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">
+                            {iLost ? "Your dare" : `${loserName}'s dare`}
+                          </p>
+                          <p className="text-sm text-gray-800 dark:text-stone-100">{reveal.task}</p>
+                        </div>
+
+                        {/* Freeze-until-confirmed dare flow */}
+                        <div className="mt-3 rounded-lg border-2 border-primary/30 bg-primary/5 dark:bg-primary/10 p-3 text-center">
+                          {reveal.confirmed === null ? (
+                            iLost ? (
+                              // I lost — I must do the dare, then claim done.
+                              reveal.claimedDone ? (
+                                <p className="text-sm text-gray-600 dark:text-stone-300">
+                                  Waiting for{" "}
+                                  <b>{game.players[reveal.winner]?.name}</b> to
+                                  confirm you did it…
+                                </p>
+                              ) : (
+                                <>
+                                  <p className="text-xs text-gray-500 dark:text-stone-400 mb-2">
+                                    Do it for real, then tap below.{" "}
+                                    {game.players[reveal.winner]?.name} decides
+                                    if it counts — the match won't move until
+                                    they do.
+                                  </p>
+                                  <button
+                                    onClick={claimTaskDone}
+                                    className="px-4 py-2 bg-primary text-white rounded-lg text-sm cursor-pointer hover:bg-black"
+                                  >
+                                    I did it
+                                  </button>
+                                </>
+                              )
+                            ) : // I won — I judge once the loser has claimed.
+                            reveal.claimedDone ? (
+                              <>
+                                <p className="text-sm text-gray-600 dark:text-stone-300 mb-2">
+                                  <b>{loserName}</b> says they did it. Did they
+                                  really?
+                                </p>
+                                <div className="flex gap-2 justify-center">
+                                  <button
+                                    onClick={() => judgeTask(true)}
+                                    className="px-4 py-1.5 bg-green-600 text-white rounded-lg text-sm cursor-pointer hover:bg-green-700"
+                                  >
+                                    Yes, they did
+                                  </button>
+                                  <button
+                                    onClick={() => judgeTask(false)}
+                                    className="px-4 py-1.5 bg-red-600 text-white rounded-lg text-sm cursor-pointer hover:bg-red-700"
+                                  >
+                                    No
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <p className="text-sm text-gray-500 dark:text-stone-400">
+                                Waiting for {loserName} to perform the dare…
+                              </p>
+                            )
+                          ) : (
+                            // Confirmed — show outcome + the advance button.
+                            <>
+                              <p className="text-sm text-gray-700 dark:text-stone-200 mb-2">
+                                {reveal.confirmed
+                                  ? "Dare confirmed!"
+                                  : "Flaked — the round point was revoked."}
+                              </p>
+                              <button
+                                onClick={nextRound}
+                                className="w-full px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-black transition-colors cursor-pointer"
+                              >
+                                {game.round >= ROUNDS
+                                  ? "See result"
+                                  : "Next round"}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()
                 )}
-                <button
-                  onClick={nextRound}
-                  className="mt-3 w-full px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-black transition-colors cursor-pointer"
-                >
-                  {reveal.winner === null
-                    ? "Throw again"
-                    : game.round >= ROUNDS
-                    ? "See result"
-                    : "Next round"}
-                </button>
               </div>
             ) : waitingForOpp ? (
-              <div className="text-sm text-gray-500 animate-pulse">
+              <div className="text-sm text-gray-500 dark:text-stone-400 animate-pulse">
                 Waiting for {opp?.name} to throw…
               </div>
             ) : (
               <div className="w-full max-w-sm">
-                <p className="text-center text-sm text-gray-500 mb-3">
+                <p className="text-center text-sm text-gray-500 dark:text-stone-400 mb-3">
                   Pick your hand
                 </p>
                 <div className="grid grid-cols-3 gap-3">
@@ -632,10 +868,10 @@ export default function RockPaperScissors({
                     <button
                       key={c}
                       onClick={() => throwHand(c)}
-                      className="flex flex-col items-center gap-1 py-4 rounded-xl border-2 border-gray-200 hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer active:scale-95"
+                      className="flex flex-col items-center gap-1 py-4 rounded-xl border-2 border-gray-200 dark:border-stone-700 hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer active:scale-95"
                     >
                       <span className="text-3xl">{EMOJI[c]}</span>
-                      <span className="text-xs text-gray-500 capitalize">{c}</span>
+                      <span className="text-xs text-gray-500 dark:text-stone-400 capitalize">{c}</span>
                     </button>
                   ))}
                 </div>
@@ -645,7 +881,7 @@ export default function RockPaperScissors({
         )}
 
         {/* Log */}
-        <div className="mt-4 w-full rounded-lg bg-gray-50 border border-gray-100 p-2 text-xs text-gray-500 space-y-0.5">
+        <div className="mt-4 w-full rounded-lg bg-gray-50 dark:bg-stone-800 border border-gray-100 dark:border-stone-700 p-2 text-xs text-gray-500 dark:text-stone-400 space-y-0.5">
           {game.log.slice(-6).map((line, i) => (
             <div key={i}>{line}</div>
           ))}

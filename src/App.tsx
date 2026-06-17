@@ -2,6 +2,9 @@ import "./App.css";
 import SearchIcon from "@mui/icons-material/Search";
 import LogoutIcon from "@mui/icons-material/Logout";
 import GroupAddIcon from "@mui/icons-material/GroupAdd";
+import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
+import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
+import { useDarkMode } from "./hooks/useDarkMode";
 import UserTabs from "./components/molecules/UserTabs";
 import GroupTab from "./components/molecules/GroupTab";
 import Chatroom from "./components/organisms/Chatroom";
@@ -42,6 +45,7 @@ interface GroupDoc {
 
 function App() {
   const { currentUser, logout } = useContext(ThemeContext);
+  const [dark, toggleDark] = useDarkMode();
 
   const [users, setUsers] = useState<ChatUser[]>([]);
   const [groups, setGroups] = useState<GroupDoc[]>([]);
@@ -255,14 +259,17 @@ function App() {
   const hasActivePane = !!activeUser || !!activeGroup;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 h-dvh overflow-hidden">
+    <div
+      className="grid grid-cols-1 grid-rows-1 lg:grid-cols-12 overflow-hidden"
+      style={{ height: "var(--app-height, 100dvh)" }}
+    >
       <div
-        className={`lg:col-span-4 flex flex-col bg-light-bg h-full border-r border-gray-200 ${
+        className={`lg:col-span-4 flex flex-col bg-light-bg dark:bg-stone-900 h-full min-h-0 overflow-hidden border-r border-gray-200 dark:border-stone-700 ${
           hasActivePane ? "hidden lg:flex" : "flex"
         }`}
       >
         {/* Current user + logout */}
-        <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200">
+        <div className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-stone-900 border-b border-gray-200 dark:border-stone-700">
           <div className="h-11 w-11 rounded-full overflow-hidden bg-primary flex items-center justify-center text-white font-semibold ring-2 ring-primary/20 shrink-0">
             {currentUser?.photoURL ? (
               <img
@@ -276,18 +283,29 @@ function App() {
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="font-semibold text-gray-800 truncate leading-tight">
+            <h2 className="font-semibold text-gray-800 dark:text-stone-100 truncate leading-tight">
               {currentUser?.displayName}
             </h2>
-            <span className="flex items-center gap-1.5 text-xs text-green-600">
+            <span className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
               <span className="h-2 w-2 rounded-full bg-green-500" />
               Online
             </span>
           </div>
           <button
+            onClick={toggleDark}
+            title={dark ? "Switch to light mode" : "Switch to dark mode"}
+            className="p-2 rounded-lg text-sm text-gray-600 hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer dark:text-stone-300 dark:hover:bg-stone-700"
+          >
+            {dark ? (
+              <LightModeOutlinedIcon fontSize="small" />
+            ) : (
+              <DarkModeOutlinedIcon fontSize="small" />
+            )}
+          </button>
+          <button
             onClick={logout}
             title="Logout"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer dark:text-stone-300 dark:hover:bg-red-950/50"
           >
             <LogoutIcon fontSize="small" />
             <span className="hidden sm:inline">Logout</span>
@@ -295,7 +313,7 @@ function App() {
         </div>
 
         <div className="border-b-2 border-primary w-full p-3">
-          <div className="bg-white border border-[#ddd] py-2 px-3 text-black flex gap-2 items-center rounded-xl outline-primary has-[input:focus-within]:outline-2">
+          <div className="bg-white dark:bg-stone-800 border border-[#ddd] dark:border-stone-700 py-2 px-3 text-black dark:text-stone-100 flex gap-2 items-center rounded-xl outline-primary has-[input:focus-within]:outline-2">
             <SearchIcon className="text-[#c2c2c2] shrink-0" fontSize="small" />
             <input
               name="search"
@@ -310,7 +328,7 @@ function App() {
         <div className="flex-1 overflow-y-auto">
           {/* ---- Groups section ---- */}
           <div className="flex items-center justify-between px-4 pt-3 pb-1">
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            <span className="text-xs font-semibold text-gray-400 dark:text-stone-400 uppercase tracking-wide">
               Groups
             </span>
             <button
@@ -323,7 +341,7 @@ function App() {
             </button>
           </div>
           {visibleGroups.length === 0 ? (
-            <p className="px-4 py-2 text-xs text-gray-400">
+            <p className="px-4 py-2 text-xs text-gray-400 dark:text-stone-400">
               No groups yet. Create one to chat with several people.
             </p>
           ) : (
@@ -345,7 +363,7 @@ function App() {
 
           {/* ---- People section ---- */}
           <div className="px-4 pt-4 pb-1">
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            <span className="text-xs font-semibold text-gray-400 dark:text-stone-400 uppercase tracking-wide">
               People
             </span>
           </div>
@@ -368,7 +386,7 @@ function App() {
       </div>
 
       <div
-        className={`lg:col-span-8 h-full ${
+        className={`lg:col-span-8 h-full min-h-0 overflow-hidden ${
           hasActivePane ? "flex" : "hidden lg:flex"
         }`}
       >
@@ -389,7 +407,7 @@ function App() {
             onBack={() => setActiveUid(null)}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-white text-gray-400 text-base">
+          <div className="w-full h-full flex items-center justify-center bg-white dark:bg-stone-900 text-gray-400 dark:text-stone-400 text-base">
             Select a conversation to start chatting
           </div>
         )}

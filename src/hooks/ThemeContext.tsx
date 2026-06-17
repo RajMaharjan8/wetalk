@@ -114,7 +114,7 @@ export default function ThemeContextProvider({ children }: ThemeContextProps) {
   // otherwise a refresh briefly looks "logged out" and kicks you to /login.
   if (loading) {
     return (
-      <div className="h-screen w-full flex justify-center items-center">
+      <div className="h-screen w-full flex justify-center items-center dark:bg-stone-900 dark:text-stone-400">
         Loading...
       </div>
     );

@@ -14,7 +14,7 @@ export default function InputField({
 }: InputFieldProps) {
   return (
     <>
-      <div className="w-full border border-[#ddd] rounded-lg p-2 outline-primary has-[input:focus-within]:outline-2 bg-white">
+      <div className="w-full border border-[#ddd] rounded-lg p-2 outline-primary has-[input:focus-within]:outline-2 bg-white dark:border-stone-700 dark:bg-stone-800">
         <input
           placeholder={placeholder}
           value={value}

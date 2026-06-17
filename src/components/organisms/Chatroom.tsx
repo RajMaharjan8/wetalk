@@ -7,6 +7,7 @@ import CasinoIcon from "@mui/icons-material/Casino";
 import SportsMmaIcon from "@mui/icons-material/SportsMma";
 import VideogameAssetIcon from "@mui/icons-material/VideogameAsset";
 import MonopolyGame from "./MonopolyGame";
+import MonopolyOffline from "./MonopolyOffline";
 import RockPaperScissors from "./RockPaperScissors";
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
 import {
@@ -32,12 +33,24 @@ interface ChatroomProps {
   onBack: () => void;
 }
 
+// A game a player can be invited to play.
+type GameKind = "monopoly" | "monopoly-offline" | "rps";
+
 interface Message {
   id: string;
   text: string;
   senderId: string;
   createdAt: number;
+  // When set, this message is a "play" invite rather than plain text — it
+  // renders as a card with a button that opens the named game.
+  invite?: GameKind;
 }
+
+const GAME_LABEL: Record<GameKind, string> = {
+  monopoly: "Monopoly",
+  "monopoly-offline": "Monopoly (offline)",
+  rps: "Rock · Paper · Scissors",
+};
 
 // Max number of messages you may send in a row before the other person must
 // reply. (Messages are NOT deleted — full history is kept; this is only the
@@ -110,7 +123,7 @@ export default function Chatroom({
   // on touch devices, where there's no hover to reveal it. null = none.
   const [activeMsgId, setActiveMsgId] = useState<string | null>(null);
   // Which game pane is open (null = none), plus a small picker menu.
-  const [activeGame, setActiveGame] = useState<"monopoly" | "rps" | null>(null);
+  const [activeGame, setActiveGame] = useState<GameKind | null>(null);
   const [gameMenuOpen, setGameMenuOpen] = useState(false);
   // Whether the message list is scrolled near the bottom, and whether a new
   // message arrived while it wasn't (drives the floating "jump to latest").
@@ -142,6 +155,7 @@ export default function Chatroom({
           text: data.text,
           senderId: data.senderId,
           createdAt: toMillis(data.createdAt),
+          ...(data.invite ? { invite: data.invite as GameKind } : {}),
         };
       });
       // oldest -> newest. We keep the FULL history now (no trimming).
@@ -263,6 +277,53 @@ export default function Chatroom({
     }
   };
 
+  // Open a game and, for the two-player online games, drop a "play" invite into
+  // the chat so the other person sees it (and the conversation lights up as
+  // unread in their list, exactly like a normal message). Offline pass-and-play
+  // is one device, so it skips the invite.
+  // Remove every "play" invite card from this chat. Used both when sending a
+  // fresh invite (so only the latest remains) and when a game is quit/finished
+  // (so the card doesn't point at a game that no longer exists).
+  const clearGameInvites = async () => {
+    const stale = allMessages.filter((m) => m.invite);
+    await Promise.all(
+      stale.map((m) => deleteDoc(doc(db, "chats", chatId, "messages", m.id)))
+    );
+  };
+
+  const openGame = async (game: GameKind) => {
+    setActiveGame(game);
+    if (game === "monopoly-offline") return;
+    try {
+      const now = Date.now();
+      const text = `Let's play ${GAME_LABEL[game]}!`;
+      // Clear out any earlier game invites in this chat so only the latest
+      // "Let's play…" card remains — no pile-up of stale invites.
+      await clearGameInvites();
+      await Promise.all([
+        addDoc(collection(db, "chats", chatId, "messages"), {
+          text,
+          senderId: myUid,
+          createdAt: now,
+          invite: game,
+        }),
+        setDoc(
+          doc(db, "chats", chatId),
+          {
+            participants: [myUid, uid],
+            lastMessage: text,
+            lastSenderId: myUid,
+            lastMessageAt: now,
+          },
+          { merge: true }
+        ),
+      ]);
+      notifyNewMessage("chat", chatId);
+    } catch (error) {
+      console.error("Could not send game invite:", error);
+    }
+  };
+
   // Delete a single message (only your own ones get a delete button).
   // We work out what's left from `allMessages` (kept live by the listener)
   // instead of re-reading from the server — a getDocs right after a delete can
@@ -323,20 +384,30 @@ export default function Chatroom({
   // A game takes over the chat pane while open.
   if (activeGame) {
     return (
-      <div className="bg-white h-full w-full flex flex-col">
+      <div className="bg-white dark:bg-stone-900 h-full w-full min-h-0 flex flex-col overflow-hidden">
         {activeGame === "monopoly" ? (
           <MonopolyGame
             chatId={chatId}
             opponentUid={uid}
             opponentName={name}
             onClose={() => setActiveGame(null)}
+            onQuit={() => {
+              clearGameInvites();
+              setActiveGame(null);
+            }}
           />
+        ) : activeGame === "monopoly-offline" ? (
+          <MonopolyOffline onClose={() => setActiveGame(null)} />
         ) : (
           <RockPaperScissors
             chatId={chatId}
             opponentUid={uid}
             opponentName={name}
             onClose={() => setActiveGame(null)}
+            onQuit={() => {
+              clearGameInvites();
+              setActiveGame(null);
+            }}
           />
         )}
       </div>
@@ -344,15 +415,15 @@ export default function Chatroom({
   }
 
   return (
-    <div className="bg-white h-full w-full flex flex-col">
+    <div className="bg-white dark:bg-stone-900 h-full w-full flex flex-col">
       {/* Header */}
-      <div className="w-full bg-light-bg border-b border-gray-200 shrink-0">
+      <div className="w-full bg-light-bg dark:bg-stone-900 border-b border-gray-200 dark:border-stone-700 shrink-0">
         <div className="flex gap-3 items-center px-4 sm:px-8 py-4">
           <button
             onClick={onBack}
             className="lg:hidden p-1 rounded-full hover:bg-light-text transition-colors shrink-0 cursor-pointer"
           >
-            <ArrowBackIcon fontSize="small" className="text-gray-600" />
+            <ArrowBackIcon fontSize="small" className="text-gray-600 dark:text-stone-300" />
           </button>
 
           <div className="relative h-12 w-12 shrink-0">
@@ -369,11 +440,11 @@ export default function Chatroom({
               )}
             </div>
             {isAvailable && (
-              <span className="absolute bottom-0 right-0 h-3.5 w-3.5 bg-green-500 rounded-full border-2 border-white" />
+              <span className="absolute bottom-0 right-0 h-3.5 w-3.5 bg-green-500 rounded-full border-2 border-white dark:border-stone-900" />
             )}
           </div>
 
-          <div className="text-gray-600 min-w-0 flex-1">
+          <div className="text-gray-600 dark:text-stone-300 min-w-0 flex-1">
             <h3 className="font-semibold truncate">{name}</h3>
             <div className="flex gap-2 font-light text-xs sm:text-sm items-center">
               <span className="shrink-0 flex items-center gap-1">
@@ -399,7 +470,7 @@ export default function Chatroom({
               className={`p-2 rounded-full transition-colors cursor-pointer ${
                 gameMenuOpen
                   ? "bg-primary/10 text-primary"
-                  : "text-gray-500 hover:bg-primary/10 hover:text-primary"
+                  : "text-gray-500 dark:text-stone-400 hover:bg-primary/10 hover:text-primary"
               }`}
             >
               <VideogameAssetIcon fontSize="small" />
@@ -412,25 +483,36 @@ export default function Chatroom({
                   className="fixed inset-0 z-10"
                   onClick={() => setGameMenuOpen(false)}
                 />
-                <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-20 overflow-hidden animate-pop-in">
+                <div className="absolute right-0 mt-1 w-52 bg-white dark:bg-stone-900 border border-gray-200 dark:border-stone-700 rounded-lg shadow-lg z-20 overflow-hidden animate-pop-in">
                   <button
                     onClick={() => {
-                      setActiveGame("monopoly");
+                      openGame("monopoly");
                       setGameMenuOpen(false);
                       sound.tap();
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 dark:text-stone-300 hover:bg-gray-50 dark:hover:bg-stone-800 transition-colors cursor-pointer"
                   >
                     <CasinoIcon fontSize="small" className="text-primary" />
                     Monopoly
                   </button>
                   <button
                     onClick={() => {
-                      setActiveGame("rps");
+                      openGame("monopoly-offline");
                       setGameMenuOpen(false);
                       sound.tap();
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer border-t border-gray-100"
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 dark:text-stone-300 hover:bg-gray-50 dark:hover:bg-stone-800 transition-colors cursor-pointer border-t border-gray-100 dark:border-stone-700"
+                  >
+                    <CasinoIcon fontSize="small" className="text-primary" />
+                    Monopoly (offline)
+                  </button>
+                  <button
+                    onClick={() => {
+                      openGame("rps");
+                      setGameMenuOpen(false);
+                      sound.tap();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 dark:text-stone-300 hover:bg-gray-50 dark:hover:bg-stone-800 transition-colors cursor-pointer border-t border-gray-100 dark:border-stone-700"
                   >
                     <SportsMmaIcon fontSize="small" className="text-primary" />
                     Rock · Paper · Scissors
@@ -444,7 +526,7 @@ export default function Chatroom({
           <button
             onClick={() => setConfirmingDelete(true)}
             title="Delete chat"
-            className="p-2 rounded-full text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer shrink-0"
+            className="p-2 rounded-full text-gray-500 dark:text-stone-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/50 dark:hover:text-red-400 transition-colors cursor-pointer shrink-0"
           >
             <DeleteIcon fontSize="small" />
           </button>
@@ -452,14 +534,14 @@ export default function Chatroom({
 
         {/* In-app confirmation bar for deleting the whole conversation */}
         {confirmingDelete && (
-          <div className="flex items-center gap-3 px-4 sm:px-8 py-3 bg-red-50 border-t border-red-100 animate-pop-in">
-            <span className="text-sm text-red-700 flex-1">
+          <div className="flex items-center gap-3 px-4 sm:px-8 py-3 bg-red-50 dark:bg-red-950/40 border-t border-red-100 dark:border-red-900 animate-pop-in">
+            <span className="text-sm text-red-700 dark:text-red-300 flex-1">
               Delete your entire chat with {name.split(" ")[0]}? This can't be
               undone.
             </span>
             <button
               onClick={() => setConfirmingDelete(false)}
-              className="px-3 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-white transition-colors cursor-pointer shrink-0"
+              className="px-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-800 transition-colors cursor-pointer shrink-0"
             >
               Cancel
             </button>
@@ -478,10 +560,10 @@ export default function Chatroom({
         <div
           ref={scrollRef}
           onScroll={onScroll}
-          className="absolute inset-0 overflow-y-auto px-2 sm:px-4 py-3 bg-white"
+          className="absolute inset-0 overflow-y-auto px-2 sm:px-4 py-3 bg-white dark:bg-stone-900"
         >
           {allMessages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-gray-400 text-sm gap-2">
+            <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-stone-400 text-sm gap-2">
               <span className="text-3xl">👋</span>
               <span>No messages yet — say hi to {name.split(" ")[0]}</span>
             </div>
@@ -513,7 +595,7 @@ export default function Chatroom({
                 <Fragment key={msg.id}>
                   {newDay && (
                     <div className="flex justify-center my-3">
-                      <span className="px-3 py-1 rounded-full bg-gray-100 text-[11px] text-gray-500">
+                      <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-stone-800 text-[11px] text-gray-500 dark:text-stone-400">
                         {formatDay(msg.createdAt)}
                       </span>
                     </div>
@@ -531,34 +613,71 @@ export default function Chatroom({
                         title="Delete message"
                         className={`${
                           active ? "opacity-100 scale-100" : "opacity-0 scale-90"
-                        } group-hover:opacity-100 group-hover:scale-100 transition-all p-1.5 rounded-full bg-gray-100 text-gray-400 hover:bg-red-100 hover:text-red-600 cursor-pointer shrink-0`}
+                        } group-hover:opacity-100 group-hover:scale-100 transition-all p-1.5 rounded-full bg-gray-100 dark:bg-stone-800 text-gray-400 dark:text-stone-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950/50 dark:hover:text-red-400 cursor-pointer shrink-0`}
                       >
                         <DeleteOutlineIcon style={{ fontSize: 16 }} />
                       </button>
                     )}
                     <div className="flex flex-col max-w-[78%] sm:max-w-sm">
-                      <div
-                        onClick={
-                          isSent
-                            ? () => {
-                                setActiveMsgId((cur) =>
-                                  cur === msg.id ? null : msg.id
-                                );
-                                sound.tap();
-                              }
-                            : undefined
-                        }
-                        className={`px-3.5 py-2 text-sm shadow-sm whitespace-pre-wrap break-words ${radius} ${
-                          isSent
-                            ? "bg-primary text-white cursor-pointer"
-                            : "bg-light-bg text-gray-800"
-                        }`}
-                      >
-                        {msg.text}
-                      </div>
+                      {msg.invite ? (
+                        // Game invite card — tapping anywhere on it opens the
+                        // game, for BOTH the sender and the recipient.
+                        <div
+                          onClick={() => {
+                            setActiveGame(msg.invite!);
+                            sound.tap();
+                          }}
+                          className={`px-3.5 py-3 text-sm shadow-sm cursor-pointer ${radius} ${
+                            isSent
+                              ? "bg-primary text-white"
+                              : "bg-light-bg text-gray-800 dark:bg-stone-800 dark:text-stone-100"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 font-semibold">
+                            <CasinoIcon style={{ fontSize: 18 }} />
+                            Game invite
+                          </div>
+                          <div
+                            className={`mt-0.5 ${
+                              isSent ? "text-white/80" : "text-gray-500 dark:text-stone-400"
+                            }`}
+                          >
+                            {GAME_LABEL[msg.invite]}
+                          </div>
+                          <div
+                            className={`mt-2 w-full px-3 py-1.5 rounded-lg text-center font-medium transition-colors ${
+                              isSent
+                                ? "bg-white/20 text-white hover:bg-white/30"
+                                : "bg-primary text-white hover:bg-black"
+                            }`}
+                          >
+                            {isSent ? "Open game" : "Play"}
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={
+                            isSent
+                              ? () => {
+                                  setActiveMsgId((cur) =>
+                                    cur === msg.id ? null : msg.id
+                                  );
+                                  sound.tap();
+                                }
+                              : undefined
+                          }
+                          className={`px-3.5 py-2 text-sm shadow-sm whitespace-pre-wrap break-words ${radius} ${
+                            isSent
+                              ? "bg-primary text-white cursor-pointer"
+                              : "bg-light-bg text-gray-800 dark:bg-stone-800 dark:text-stone-100"
+                          }`}
+                        >
+                          {msg.text}
+                        </div>
+                      )}
                       {lastInGroup && (
                         <span
-                          className={`mt-0.5 px-1 text-[10px] text-gray-400 ${
+                          className={`mt-0.5 px-1 text-[10px] text-gray-400 dark:text-stone-400 ${
                             isSent ? "text-right" : "text-left"
                           }`}
                         >
@@ -579,11 +698,11 @@ export default function Chatroom({
           <button
             onClick={jumpToBottom}
             title="Jump to latest"
-            className="animate-pop-in absolute bottom-4 right-4 h-10 w-10 flex items-center justify-center rounded-full bg-white border border-gray-200 shadow-md text-gray-600 hover:text-primary hover:border-primary/40 transition-colors cursor-pointer"
+            className="animate-pop-in absolute bottom-4 right-4 h-10 w-10 flex items-center justify-center rounded-full bg-white dark:bg-stone-800 border border-gray-200 dark:border-stone-700 shadow-md text-gray-600 dark:text-stone-300 hover:text-primary hover:border-primary/40 transition-colors cursor-pointer"
           >
             <KeyboardArrowDownIcon />
             {hasNewBelow && (
-              <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-primary border-2 border-white" />
+              <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-primary border-2 border-white dark:border-stone-800" />
             )}
           </button>
         )}
@@ -591,25 +710,25 @@ export default function Chatroom({
 
       {/* "almost at the limit" hint + "wait for reply" banner */}
       {!isBlocked && remaining === 1 && (
-        <div className="shrink-0 px-4 py-1.5 bg-amber-50/70 text-amber-700 text-[11px] text-center border-t border-amber-100">
+        <div className="shrink-0 px-4 py-1.5 bg-amber-50/70 dark:bg-amber-950/40 text-amber-700 dark:text-amber-200 text-[11px] text-center border-t border-amber-100 dark:border-amber-900">
           1 more message, then wait for {name.split(" ")[0]} to reply.
         </div>
       )}
       {isBlocked && (
-        <div className="shrink-0 px-4 py-2 bg-amber-50 text-amber-700 text-xs text-center border-t border-amber-100">
+        <div className="shrink-0 px-4 py-2 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-200 text-xs text-center border-t border-amber-100 dark:border-amber-900">
           You've sent {MAX_MESSAGES} messages. Wait for {name.split(" ")[0]} to
           reply before sending more.
         </div>
       )}
 
       {/* Input */}
-      <div className="shrink-0 p-3 bg-light-bg border-t border-gray-200">
+      <div className="shrink-0 p-3 bg-light-bg dark:bg-stone-900 border-t border-gray-200 dark:border-stone-700">
         <form onSubmit={sendMessage} className="flex items-center gap-2">
           <div
-            className={`flex-1 flex items-center bg-white h-12 rounded-2xl border px-4 transition-all ${
+            className={`flex-1 flex items-center bg-white dark:bg-stone-800 h-12 rounded-2xl border px-4 transition-all ${
               isBlocked
-                ? "border-gray-200 opacity-60"
-                : "border-[#ddd] focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
+                ? "border-gray-200 dark:border-stone-700 opacity-60"
+                : "border-[#ddd] dark:border-stone-700 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
             }`}
           >
             <input
@@ -619,7 +738,7 @@ export default function Chatroom({
               placeholder={
                 isBlocked ? "Waiting for a reply..." : "Type a message..."
               }
-              className="flex-1 text-sm bg-transparent focus:outline-none disabled:cursor-not-allowed"
+              className="flex-1 text-sm bg-transparent dark:text-stone-100 focus:outline-none disabled:cursor-not-allowed"
               onChange={(e) => setMessage(e.target.value)}
               onFocus={() =>
                 setTimeout(

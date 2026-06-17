@@ -59,34 +59,34 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-light-bg px-4">
+    <div className="min-h-screen w-full flex items-center justify-center bg-light-bg dark:bg-stone-900 px-4">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-gray-100 p-8 flex flex-col gap-4"
+        className="w-full max-w-sm bg-white dark:bg-stone-900 rounded-2xl shadow-xl border border-gray-100 dark:border-stone-700 p-8 flex flex-col gap-4"
       >
         <div className="mx-auto h-16 w-16 rounded-2xl bg-primary flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-primary/30">
           A
         </div>
-        <h1 className="text-center text-2xl font-bold text-gray-800">
+        <h1 className="text-center text-2xl font-bold text-gray-800 dark:text-stone-100">
           Admin Login
         </h1>
 
-        <div className="w-full border border-[#ddd] rounded-lg p-2 outline-primary has-[input:focus-within]:outline-2 bg-white">
+        <div className="w-full border border-[#ddd] dark:border-stone-700 rounded-lg p-2 outline-primary has-[input:focus-within]:outline-2 bg-white dark:bg-stone-800">
           <input
             placeholder="Username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="w-full focus:outline-none"
+            className="w-full focus:outline-none dark:text-stone-100"
           />
         </div>
 
-        <div className="w-full border border-[#ddd] rounded-lg p-2 outline-primary has-[input:focus-within]:outline-2 bg-white">
+        <div className="w-full border border-[#ddd] dark:border-stone-700 rounded-lg p-2 outline-primary has-[input:focus-within]:outline-2 bg-white dark:bg-stone-800">
           <input
             placeholder="Password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full focus:outline-none"
+            className="w-full focus:outline-none dark:text-stone-100"
           />
         </div>
 
@@ -156,12 +156,12 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-light-bg">
-      <header className="flex items-center justify-between bg-white border-b border-gray-200 px-6 py-4">
-        <h1 className="text-xl font-bold text-gray-800">Admin · Users</h1>
+    <div className="min-h-screen w-full bg-light-bg dark:bg-stone-900">
+      <header className="flex items-center justify-between bg-white dark:bg-stone-900 border-b border-gray-200 dark:border-stone-700 px-6 py-4">
+        <h1 className="text-xl font-bold text-gray-800 dark:text-stone-100">Admin · Users</h1>
         <button
           onClick={onLogout}
-          className="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
+          className="px-4 py-2 rounded-lg text-sm text-gray-600 dark:text-stone-300 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
         >
           Log out
         </button>
@@ -174,7 +174,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           </p>
         )}
         {users.length === 0 ? (
-          <p className="text-gray-400 text-sm py-8 text-center">
+          <p className="text-gray-400 dark:text-stone-400 text-sm py-8 text-center">
             No users yet.
           </p>
         ) : (
@@ -182,7 +182,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             {users.map((user) => (
               <li
                 key={user.uid}
-                className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 px-4 py-3 shadow-sm"
+                className="flex items-center gap-3 bg-white dark:bg-stone-900 rounded-xl border border-gray-100 dark:border-stone-700 px-4 py-3 shadow-sm"
               >
                 <div className="h-11 w-11 rounded-full overflow-hidden bg-primary flex items-center justify-center text-white font-semibold shrink-0">
                   {user.photoURL ? (
@@ -198,7 +198,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-800 truncate flex items-center gap-2">
+                  <p className="font-semibold text-gray-800 dark:text-stone-100 truncate flex items-center gap-2">
                     {user.name ?? "Unknown"}
                     {user.banned && (
                       <span className="text-[10px] uppercase tracking-wide bg-red-100 text-red-600 px-2 py-0.5 rounded-full">
@@ -206,7 +206,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                       </span>
                     )}
                   </p>
-                  <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                  <p className="text-xs text-gray-400 dark:text-stone-400 truncate">{user.email}</p>
                 </div>
 
                 <button

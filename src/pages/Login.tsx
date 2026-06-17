@@ -28,8 +28,8 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-linear-to-br from-light-bg via-white to-light-bg px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 p-8 sm:p-10 text-center">
+    <div className="min-h-screen w-full flex items-center justify-center bg-linear-to-br from-light-bg via-white to-light-bg dark:from-stone-900 dark:via-stone-950 dark:to-stone-900 px-4">
+      <div className="w-full max-w-md bg-white dark:bg-stone-900 rounded-2xl shadow-xl border border-gray-100 dark:border-stone-700 p-8 sm:p-10 text-center">
         {/* App logo */}
         <img
           src="/pwa-192x192.png"
@@ -37,10 +37,10 @@ export default function Login() {
           className="mx-auto h-16 w-16 rounded-2xl shadow-lg shadow-primary/30"
         />
 
-        <h1 className="mt-6 text-2xl font-bold text-gray-800">
+        <h1 className="mt-6 text-2xl font-bold text-gray-800 dark:text-stone-100">
           Welcome to WeTalk
         </h1>
-        <p className="mt-2 text-sm text-gray-500">
+        <p className="mt-2 text-sm text-gray-500 dark:text-stone-400">
           Sign in to start chatting with your friends in real time.
         </p>
 
@@ -55,7 +55,7 @@ export default function Login() {
         <button
           onClick={handleGoogleLogin}
           disabled={loading}
-          className="mt-8 w-full h-12 flex items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white text-gray-700 font-medium hover:bg-gray-50 hover:shadow-md active:scale-[0.99] transition-all disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+          className="mt-8 w-full h-12 flex items-center justify-center gap-3 rounded-xl border border-gray-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-gray-700 dark:text-stone-300 font-medium hover:bg-gray-50 dark:hover:bg-stone-700 hover:shadow-md active:scale-[0.99] transition-all disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
         >
           {loading ? (
             <span className="h-5 w-5 border-2 border-gray-300 border-t-primary rounded-full animate-spin" />
@@ -82,7 +82,7 @@ export default function Login() {
           <span>{loading ? "Signing in..." : "Continue with Google"}</span>
         </button>
 
-        <p className="mt-6 text-xs text-gray-400">
+        <p className="mt-6 text-xs text-gray-400 dark:text-stone-400">
           By continuing, you agree to our Terms & Privacy Policy.
         </p>
       </div>

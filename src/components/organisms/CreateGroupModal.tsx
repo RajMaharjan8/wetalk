@@ -80,18 +80,18 @@ export default function CreateGroupModal({
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-md rounded-2xl shadow-xl flex flex-col max-h-[85vh] overflow-hidden"
+        className="bg-white dark:bg-stone-900 w-full max-w-md rounded-2xl shadow-xl flex flex-col max-h-[85vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()} // keep clicks inside from closing
       >
         {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-200">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-200 dark:border-stone-700">
           <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-white shrink-0">
             <GroupsIcon fontSize="small" />
           </div>
-          <h2 className="font-semibold text-gray-800 flex-1">New group</h2>
+          <h2 className="font-semibold text-gray-800 dark:text-stone-100 flex-1">New group</h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-full text-gray-500 hover:bg-gray-100 cursor-pointer"
+            className="p-1 rounded-full text-gray-500 dark:text-stone-400 hover:bg-gray-100 dark:hover:bg-stone-800 cursor-pointer"
           >
             <CloseIcon fontSize="small" />
           </button>
@@ -104,17 +104,17 @@ export default function CreateGroupModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Group name"
-            className="w-full border border-[#ddd] rounded-xl px-4 py-2.5 text-sm outline-primary focus:outline-2"
+            className="w-full border border-[#ddd] dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 rounded-xl px-4 py-2.5 text-sm outline-primary focus:outline-2"
           />
         </div>
 
         {/* Member picker */}
         <div className="px-5 pt-4 pb-2">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <span className="text-xs font-medium text-gray-500 dark:text-stone-400 uppercase tracking-wide">
               Add members
             </span>
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-gray-400 dark:text-stone-400">
               {selected.size} selected
             </span>
           </div>
@@ -123,14 +123,14 @@ export default function CreateGroupModal({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search people..."
-            className="w-full border border-[#ddd] rounded-xl px-4 py-2 text-sm outline-primary focus:outline-2 mb-2"
+            className="w-full border border-[#ddd] dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 rounded-xl px-4 py-2 text-sm outline-primary focus:outline-2 mb-2"
           />
         </div>
 
         {/* Scrollable list of people */}
         <ul className="flex-1 overflow-y-auto px-2 pb-2">
           {visibleUsers.length === 0 ? (
-            <li className="text-center text-sm text-gray-400 py-6">
+            <li className="text-center text-sm text-gray-400 dark:text-stone-400 py-6">
               No people found
             </li>
           ) : (
@@ -146,7 +146,7 @@ export default function CreateGroupModal({
                   key={u.uid}
                   onClick={() => toggle(u.uid)}
                   className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-colors ${
-                    isOn ? "bg-primary/10" : "hover:bg-gray-50"
+                    isOn ? "bg-primary/10" : "hover:bg-gray-50 dark:hover:bg-stone-800"
                   }`}
                 >
                   <div className="h-10 w-10 rounded-full bg-primary overflow-hidden flex items-center justify-center text-white text-sm shrink-0">
@@ -162,10 +162,10 @@ export default function CreateGroupModal({
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-800 truncate">
+                    <p className="text-sm font-medium text-gray-800 dark:text-stone-100 truncate">
                       {u.name}
                     </p>
-                    <p className="text-xs text-gray-400 truncate">{u.email}</p>
+                    <p className="text-xs text-gray-400 dark:text-stone-400 truncate">{u.email}</p>
                   </div>
                   {/* checkbox indicator */}
                   <span
@@ -191,10 +191,10 @@ export default function CreateGroupModal({
         )}
 
         {/* Footer actions */}
-        <div className="px-5 py-4 border-t border-gray-200 flex gap-3">
+        <div className="px-5 py-4 border-t border-gray-200 dark:border-stone-700 flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
+            className="flex-1 py-2.5 rounded-xl text-sm text-gray-600 dark:text-stone-300 hover:bg-gray-100 dark:hover:bg-stone-700 transition-colors cursor-pointer"
           >
             Cancel
           </button>
