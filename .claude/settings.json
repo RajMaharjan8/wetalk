@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php -l /Applications/MAMP/htdocs/reportgenerator/storage/framework/views/bd7664c756593c7231531ce416ecec30.php)",
+      "Bash(grep -c '{{ $inputClass }}\\\\|{{ $labelClass }}' resources/views/pages/admin/⚡landing.blade.php)",
+      "Bash(grep -oE \"assertDontSee|assertSee|pay-modal|Download PDF|Failed asserting that [^\\\\\"]{0,120}\")"
+    ]
+  }
+}

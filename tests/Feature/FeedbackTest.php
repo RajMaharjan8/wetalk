@@ -15,7 +15,7 @@ it('stores feedback and emails the admin notification address', function () {
 
     $user = loginAsTestUser();
 
-    Livewire::test('pages::reports-index')
+    Livewire::test('feedback')
         ->set('fb_working', 'The cover generator is great.')
         ->set('fb_not_working', 'Image upload is slow.')
         ->call('sendFeedback')
@@ -35,7 +35,7 @@ it('stores feedback and emails the admin notification address', function () {
 it('requires at least one feedback field', function () {
     loginAsTestUser();
 
-    Livewire::test('pages::reports-index')
+    Livewire::test('feedback')
         ->call('sendFeedback')
         ->assertHasErrors('fb_working');
 
@@ -47,7 +47,7 @@ it('attaches uploaded images and stores them', function () {
     Storage::fake('public');
     loginAsTestUser();
 
-    Livewire::test('pages::reports-index')
+    Livewire::test('feedback')
         ->set('fb_working', 'Looks great.')
         ->set('fb_images', [
             UploadedFile::fake()->image('shot1.png'),
@@ -69,7 +69,7 @@ it('rejects more images than the configured limit', function () {
     Setting::set('feedback_image_limit', '3');
     loginAsTestUser();
 
-    Livewire::test('pages::reports-index')
+    Livewire::test('feedback')
         ->set('fb_working', 'Too many shots.')
         ->set('fb_images', [
             UploadedFile::fake()->image('1.png'),
@@ -91,7 +91,7 @@ it('blocks more than the configured number of feedback per day', function () {
     Feedback::create(['user_id' => $user->id, 'working' => 'first']);
     Feedback::create(['user_id' => $user->id, 'working' => 'second']);
 
-    Livewire::test('pages::reports-index')
+    Livewire::test('feedback')
         ->set('fb_working', 'One more please.')
         ->call('sendFeedback')
         ->assertHasErrors('fb_working');

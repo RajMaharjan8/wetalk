@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\PaymentController;
+use App\Models\Download;
 use App\Models\Payment;
 use App\Models\Report;
 use App\Models\Setting;
@@ -19,8 +20,8 @@ it('shows the print button and no pay options when no gateway is enabled', funct
 
     $this->get(route('reports.output', $report))
         ->assertOk()
-        ->assertSee('Print / Save as PDF')
-        ->assertDontSee('to download:');
+        ->assertSee('Download PDF')              // free download button
+        ->assertDontSee('Download your report'); // no payment popup heading when free
 });
 
 it('shows the paywall over a free preview, with no print button, when unpaid', function () {
@@ -30,11 +31,11 @@ it('shows the paywall over a free preview, with no print button, when unpaid', f
 
     $this->get(route('reports.output', $report))
         ->assertOk()
-        ->assertSee('Download your report')
+        ->assertSee('Download your report')   // payment popup heading (only when locked)
         ->assertSee('eSewa')
         ->assertSee('report-source', false)   // preview is rendered (free to view)
         ->assertSee('paywall-print', false)   // print output is blocked
-        ->assertDontSee('Print / Save as PDF');
+        ->assertDontSee('Download PDF');      // no free download button
 });
 
 it('shows both gateways on the paywall when both are enabled', function () {
@@ -57,7 +58,7 @@ it('still locks the download when a gateway is enabled but no price is set', fun
 
     $this->get(route('reports.output', $report))
         ->assertOk()
-        ->assertDontSee('Print / Save as PDF')
+        ->assertDontSee('Download PDF')
         ->assertSee('no price has been set');
 });
 
@@ -74,7 +75,7 @@ it('shows the print button once a redeemable payment unlocks the session', funct
     $this->withSession([PaymentController::unlockKey($report) => $payment->id])
         ->get(route('reports.output', $report))
         ->assertOk()
-        ->assertSee('Print / Save as PDF');
+        ->assertSee('Download PDF');
 });
 
 it('consumes the unlock so the next download requires payment again', function () {
@@ -94,7 +95,50 @@ it('consumes the unlock so the next download requires payment again', function (
     expect($payment->fresh()->consumed_at)->not->toBeNull();
 
     // Without an armed unlock the gate is closed again.
-    $this->get(route('reports.output', $report))->assertDontSee('Print / Save as PDF');
+    $this->get(route('reports.output', $report))->assertDontSee('Download PDF');
+});
+
+it('records a free download classified by cover type', function () {
+    $user = loginAsTestUser();
+    $report = Report::factory()->create(['user_id' => $user->id, 'cover_format' => 'tu']);
+
+    $this->post(route('reports.download.consume', $report))->assertNoContent();
+
+    $download = Download::firstOrFail();
+    expect($download->cover_type)->toBe('tu')
+        ->and($download->paid)->toBeFalse()
+        ->and($download->user_id)->toBe($user->id);
+});
+
+it('records a paid download and flags it as paid', function () {
+    $user = loginAsTestUser();
+    $report = Report::factory()->create(['user_id' => $user->id]); // london_met
+    enableEsewa();
+
+    $payment = Payment::factory()->completed()->create([
+        'user_id' => $user->id,
+        'report_id' => $report->id,
+    ]);
+
+    $this->withSession([PaymentController::unlockKey($report) => $payment->id])
+        ->post(route('reports.download.consume', $report))
+        ->assertNoContent();
+
+    $download = Download::firstOrFail();
+    expect($download->cover_type)->toBe('london_met')
+        ->and($download->paid)->toBeTrue();
+});
+
+it('classifies cover type (tu / london_met / custom)', function () {
+    $tu = Report::factory()->create(['cover_format' => 'tu']);
+    $london = Report::factory()->create(['cover_format' => 'london_met']);
+    $custom = Report::factory()->create([
+        'front_overrides' => ['cover' => '<div class="cover-sheet-custom cover-custom">x</div>'],
+    ]);
+
+    expect($tu->coverType())->toBe('tu')
+        ->and($london->coverType())->toBe('london_met')
+        ->and($custom->coverType())->toBe('custom');
 });
 
 it('forbids paying for or viewing another user’s report', function () {

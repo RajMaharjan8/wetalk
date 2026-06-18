@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Download;
 use App\Models\Payment;
 use App\Models\Report;
 use App\Support\Payments\EsewaGateway;
@@ -129,9 +130,21 @@ class PaymentController extends Controller
             ? Payment::where('id', $paymentId)->where('report_id', $report->id)->first()
             : null;
 
+        $paid = false;
+
         if ($payment && $payment->isRedeemable()) {
             $payment->update(['consumed_at' => now()]);
+            $paid = true;
         }
+
+        // Record the download (paid or free) classified by cover type, so the
+        // admin dashboard can report TU / London Met / Custom usage.
+        Download::create([
+            'report_id' => $report->id,
+            'user_id' => $request->user()->id,
+            'cover_type' => $report->coverType(),
+            'paid' => $paid,
+        ]);
 
         $request->session()->forget(self::unlockKey($report));
 

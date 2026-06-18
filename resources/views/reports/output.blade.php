@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $report->title ?: $report->module_title }}</title>
 
+    @include('partials.theme-head')
     @include('partials.pwa-head')
 
     @vite(['resources/js/report.js'])
@@ -17,8 +18,11 @@
         $lineSpacing = $report->lineSpacing();
         $headingAlign = $report->headingAlign();
         $headingTransform = $report->heading_uppercase ? 'uppercase' : 'none';
+        // Public sample mode (the landing-page iframe preview): read-only, free,
+        // no editor chrome and no owner-only actions.
+        $sample = $sample ?? false;
         // "Edit pages" mode: only owners (update ability) and only when ?edit=1.
-        $canEdit = request()->user()?->can('update', $report) ?? false;
+        $canEdit = ! $sample && (request()->user()?->can('update', $report) ?? false);
         $editing = $canEdit && request()->boolean('edit');
     @endphp
 
@@ -64,6 +68,36 @@
     <style>
         body { margin: 0; background: #ffffff; font-family: system-ui, sans-serif; }
 
+        /* ---- Dark chrome (toolbar, page background) — the A4 sheets stay white
+             because they are the printed document. Applied via the .dark class
+             that the theme-head script sets on <html>. ---- */
+        .dark body { background: #0b1220; }
+        .dark .report-toolbar { background: #111827; border-bottom-color: #1f2937; }
+        .dark .report-toolbar a { color: #a5b4fc; }
+        .dark .report-toolbar .report-download { color: #a5b4fc; border-color: #4f46e5; }
+        .dark .report-toolbar .report-download:hover { background: rgba(79,70,229,0.15); }
+        .dark .report-title-label { color: #f3f4f6; }
+        .dark .report-loading { color: #9ca3af; }
+        /* The rendered document is the printed page — it must ALWAYS be white
+           with dark text, even in dark mode. Force it so the chrome's dark
+           theme can't bleed into the sheet. */
+        .dark #report-render .pagedjs_page,
+        .dark #report-render .pagedjs_sheet,
+        .dark #report-render .pagedjs_page_content,
+        .dark .edit-doc .report-cover,
+        .dark .edit-doc .tu-frontpage {
+            background: #ffffff !important;
+        }
+        .dark #report-render,
+        .dark #report-render .report-doc,
+        .dark .edit-doc .report-doc {
+            color: #111111;
+        }
+        /* Keep everything white when printing, regardless of theme. */
+        @media print {
+            .dark body { background: #fff; }
+        }
+
         /* Outline each rendered page so it reads as a sheet on the white background */
         #report-render .pagedjs_page { box-shadow: 0 0 0 1px #e5e7eb; }
         /* Center the sheets in the available width instead of hugging the left. */
@@ -89,6 +123,42 @@
             padding: 7px 16px; font-size: 14px; font-weight: 600;
         }
         .report-toolbar .report-download:hover { background: #eef2ff; }
+        .report-title-label { font-weight: 600; color: #111827; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* ---- Floating download button (fixed, bottom-right) ---- */
+        .report-fab {
+            position: fixed; right: 24px; bottom: 24px; z-index: 60;
+            display: inline-flex; align-items: center; gap: 8px;
+            background: #4f46e5; color: #fff; border: 0; border-radius: 9999px;
+            padding: 13px 22px; font-size: 14px; font-weight: 700; cursor: pointer;
+            box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35); transition: background .15s, transform .05s;
+        }
+        .report-fab:hover { background: #4338ca; }
+        .report-fab:active { transform: translateY(1px); }
+        .report-fab svg { width: 18px; height: 18px; }
+        @media print { .report-fab { display: none !important; } }
+        @media (max-width: 640px) {
+            .report-fab { right: 14px; bottom: 14px; padding: 12px 18px; font-size: 13px; }
+        }
+
+        /* ---- Payment popup (opened from the floating button when locked) ---- */
+        .pay-modal {
+            display: none; position: fixed; inset: 0; z-index: 100;
+            align-items: center; justify-content: center; padding: 20px;
+            background: rgba(17, 24, 39, 0.6);
+        }
+        .pay-modal.is-open { display: flex; }
+        .pay-modal-card {
+            position: relative; width: 100%; max-width: 420px; background: #fff;
+            border-radius: 16px; box-shadow: 0 20px 50px rgba(17, 24, 39, 0.25);
+            padding: 32px 30px; text-align: center;
+        }
+        .pay-modal-close {
+            position: absolute; top: 14px; right: 14px; border: 0; background: transparent;
+            color: #9ca3af; cursor: pointer; padding: 4px; line-height: 0;
+        }
+        .pay-modal-close:hover { color: #374151; }
+        .pay-modal-close svg { width: 20px; height: 20px; }
 
         /* ---- Paywall (banner above the free preview when payment is required) ---- */
         .paywall { display: flex; justify-content: center; padding: 56px 20px; }
@@ -156,6 +226,9 @@
             background: #fff; border-bottom: 1px solid #d1d5db;
         }
         .edit-toolbar a { color: #4f46e5; text-decoration: none; font-size: 14px; font-weight: 600; }
+        .dark .edit-toolbar { background: #111827; border-bottom-color: #1f2937; }
+        .dark .edit-toolbar a { color: #a5b4fc; }
+        .dark .edit-toolbar .btn-reset { background: #111827; color: #f87171; border-color: #7f1d1d; }
         .edit-toolbar .edit-actions { display: flex; align-items: center; gap: 10px; }
         .edit-toolbar button { border-radius: 6px; padding: 8px 16px; font-size: 14px; font-weight: 600; cursor: pointer; border: 0; }
         .edit-toolbar .btn-save { background: #4f46e5; color: #fff; }
@@ -296,15 +369,20 @@
     </script>
 @else
     {{-- ============ VIEW MODE ============ --}}
+    {{-- Uniform header: back link (or title for samples) on the left, owner-only
+         "Edit pages" on the right. The download lives in the floating button. --}}
     <div class="report-toolbar">
-        <a href="{{ route('reports.sections', ['report' => $report]) }}">&larr; Back to editor</a>
+        @if ($sample)
+            <span class="report-title-label">{{ $report->title ?: $report->module_title }}</span>
+        @else
+            <a href="{{ route('reports.sections', ['report' => $report]) }}">&larr; Back to editor</a>
+        @endif
         <div class="report-actions">
             @if ($canEdit)
                 <a href="{{ route('reports.output', ['report' => $report, 'edit' => 1]) }}" class="report-download">Edit pages</a>
             @endif
-
-            @if ($downloadUnlocked)
-                <button type="button" onclick="downloadReport()">Print / Save as PDF</button>
+            @if ($sample)
+                <a href="{{ route('register') }}" class="report-download" target="_top">Make your own &rarr;</a>
             @endif
         </div>
     </div>
@@ -316,16 +394,62 @@
         <div class="report-flash report-flash-error">{{ session('payment-error') }}</div>
     @endif
 
-    {{-- Free preview for everyone. When locked, a paywall banner sits above it
-         and the printed output is blocked (Cmd/Ctrl+P yields a payment notice,
-         not the report) so no free PDF can be produced. --}}
+    {{-- The printed output is blocked when locked (Cmd/Ctrl+P yields a payment
+         notice, not the report) so no free PDF can be produced. The on-screen
+         preview stays visible for everyone. --}}
     @unless ($downloadUnlocked)
-        @include('reports.partials.paywall')
+        @include('reports.partials.print-block')
     @endunless
 
     <div class="report-loading">Preparing your report&hellip;</div>
 
     <div id="report-render"></div>
+
+    {{-- ============ Floating download button (fixed, right) ============ --}}
+    <button type="button" class="report-fab" onclick="startDownload()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+        <span>{{ ($downloadUnlocked || $sample) ? 'Download PDF' : 'Download — Rs. ' . number_format($downloadPrice, 0) }}</span>
+    </button>
+
+    {{-- ============ Payment popup (shown when locked & a gateway is enabled) ============ --}}
+    @unless ($downloadUnlocked || $sample)
+        <div id="pay-modal" class="pay-modal" role="dialog" aria-modal="true" aria-labelledby="pay-modal-title">
+            <div class="pay-modal-card">
+                <button type="button" class="pay-modal-close" onclick="closePayModal()" aria-label="Close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                </button>
+                <div class="paywall-lock">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+                </div>
+                <h1 id="pay-modal-title">Download your report</h1>
+                <p class="paywall-title">{{ $report->title ?: $report->module_title ?: 'Your report' }}</p>
+
+                @if ($downloadPrice > 0)
+                    <div class="paywall-price">Rs.&nbsp;{{ number_format($downloadPrice, 2) }}</div>
+                    <p class="paywall-sub">Choose a payment method to unlock the PDF download.</p>
+
+                    <div class="paywall-methods">
+                        @foreach ($enabledGateways as $gateway)
+                            <form method="POST" action="{{ route('reports.pay', ['report' => $report, 'gateway' => $gateway]) }}">
+                                @csrf
+                                <button type="submit" class="pay-method pay-method-{{ $gateway }}">
+                                    <span class="pay-method-name">{{ $gateway === 'esewa' ? 'eSewa' : 'Khalti' }}</span>
+                                    <span class="pay-method-go">Pay&nbsp;&rarr;</span>
+                                </button>
+                            </form>
+                        @endforeach
+                    </div>
+
+                    <p class="paywall-note">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13" style="vertical-align:-2px"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
+                        Secure payment — you'll return here to download once it's confirmed.
+                    </p>
+                @else
+                    <p class="paywall-warn">Paid downloads are enabled, but no price has been set yet. Please set a download price in <strong>Admin&nbsp;→&nbsp;Payments</strong>.</p>
+                @endif
+            </div>
+        </div>
+    @endunless
 
     <template id="report-source">
         <div class="report-doc">
@@ -429,20 +553,48 @@
     </template>
 
     <script>
-        // Spend the one-shot download unlock (so the next download requires a
-        // fresh payment) right before opening the print dialog. When downloads
-        // are free this endpoint is a no-op.
+        var downloadUnlocked = @json($downloadUnlocked || $sample);
+
+        // Floating button entry point: download when unlocked, otherwise open
+        // the payment popup (when a gateway is enabled).
+        function startDownload() {
+            if (downloadUnlocked) {
+                downloadReport();
+            } else {
+                openPayModal();
+            }
+        }
+
+        // Record the download (for the admin dashboard) and spend any one-shot
+        // payment unlock right before opening the print dialog. Runs for both
+        // free and paid downloads.
         function downloadReport() {
-            @if ($paymentRequired)
+            @if ($sample)
+                window.print();
+            @else
                 fetch(@json(route('reports.download.consume', ['report' => $report])), {
                     method: 'POST',
                     headers: { 'X-CSRF-TOKEN': @json(csrf_token()) },
                     keepalive: true,
                 }).finally(function () { window.print(); });
-            @else
-                window.print();
             @endif
         }
+
+        function openPayModal() {
+            var m = document.getElementById('pay-modal');
+            if (m) { m.classList.add('is-open'); document.body.style.overflow = 'hidden'; }
+        }
+        function closePayModal() {
+            var m = document.getElementById('pay-modal');
+            if (m) { m.classList.remove('is-open'); document.body.style.overflow = ''; }
+        }
+        // Close on backdrop click / Escape.
+        document.addEventListener('click', function (e) {
+            if (e.target && e.target.id === 'pay-modal') { closePayModal(); }
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { closePayModal(); }
+        });
     </script>
 @endif
 </body>

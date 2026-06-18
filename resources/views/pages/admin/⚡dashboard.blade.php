@@ -1,6 +1,8 @@
 <?php
 
+use App\Models\Download;
 use App\Models\Feedback;
+use App\Models\Payment;
 use App\Models\Report;
 use App\Models\User;
 use Livewire\Attributes\Layout;
@@ -16,7 +18,41 @@ new #[Layout('layouts::admin')] class extends Component
             'suspended' => User::whereNotNull('suspended_at')->count(),
             'reports' => Report::count(),
             'feedback' => Feedback::count(),
+            'downloads' => Download::count(),
+            'revenue' => (float) Payment::where('status', Payment::STATUS_COMPLETED)->sum('amount'),
         ];
+    }
+
+    /**
+     * Download counts per cover type, in a fixed display order with zero
+     * defaults so every category always shows.
+     *
+     * @return array<string, int>
+     */
+    public function getDownloadBreakdownProperty(): array
+    {
+        $counts = Download::query()
+            ->selectRaw('cover_type, count(*) as total')
+            ->groupBy('cover_type')
+            ->pluck('total', 'cover_type');
+
+        $breakdown = [];
+
+        foreach (Download::COVER_LABELS as $key => $label) {
+            $breakdown[$key] = (int) ($counts[$key] ?? 0);
+        }
+
+        return $breakdown;
+    }
+
+    /** @return \Illuminate\Support\Collection<int, Payment> */
+    public function getRecentTransactionsProperty()
+    {
+        return Payment::with(['user', 'report'])
+            ->where('status', Payment::STATUS_COMPLETED)
+            ->latest()
+            ->take(5)
+            ->get();
     }
 
     /** @return \Illuminate\Support\Collection<int, Feedback> */
@@ -46,6 +82,7 @@ new #[Layout('layouts::admin')] class extends Component
             ['label' => 'Suspended', 'value' => $stats['suspended'], 'badge' => 'bg-red-50 text-red-600', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />'],
             ['label' => 'Reports', 'value' => $stats['reports'], 'badge' => 'bg-slate-100 text-slate-600', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />'],
             ['label' => 'Feedback', 'value' => $stats['feedback'], 'badge' => 'bg-amber-50 text-amber-600', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />'],
+            ['label' => 'Downloads', 'value' => $stats['downloads'], 'badge' => 'bg-sky-50 text-sky-600', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />'],
         ];
     }
 }; ?>
@@ -63,6 +100,58 @@ new #[Layout('layouts::admin')] class extends Component
                 <p class="mt-1 text-sm text-slate-500">{{ $card['label'] }}</p>
             </div>
         @endforeach
+    </div>
+
+    {{-- Downloads by cover type + recent transactions --}}
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 class="text-sm font-semibold text-slate-900">Downloads by cover</h2>
+            @php($totalDownloads = array_sum($this->downloadBreakdown))
+            <div class="mt-5 space-y-4">
+                @foreach ($this->downloadBreakdown as $type => $count)
+                    @php($pct = $totalDownloads > 0 ? round($count / $totalDownloads * 100) : 0)
+                    <div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="font-medium text-slate-700">{{ \App\Models\Download::COVER_LABELS[$type] }}</span>
+                            <span class="text-slate-500">{{ number_format($count) }} <span class="text-slate-300">·</span> {{ $pct }}%</span>
+                        </div>
+                        <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                            <div class="h-full rounded-full {{ ['tu' => 'bg-indigo-500', 'london_met' => 'bg-sky-500', 'custom' => 'bg-emerald-500'][$type] }}" style="width: {{ $pct }}%"></div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+            <p class="mt-5 border-t border-slate-100 pt-4 text-sm text-slate-500">
+                Total downloads <span class="font-semibold text-slate-900">{{ number_format($totalDownloads) }}</span>
+            </p>
+        </div>
+
+        <div class="rounded-xl border border-slate-200 bg-white shadow-sm lg:col-span-2">
+            <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                <h2 class="text-sm font-semibold text-slate-900">Recent transactions</h2>
+                <div class="flex items-center gap-4">
+                    <span class="text-sm text-slate-500">Revenue <span class="font-semibold text-slate-900">Rs. {{ number_format($this->stats['revenue'], 2) }}</span></span>
+                    <a href="{{ route('admin.transactions') }}" wire:navigate class="text-sm font-medium text-indigo-600 hover:text-indigo-500">View all</a>
+                </div>
+            </div>
+
+            @if ($this->recentTransactions->isEmpty())
+                <div class="px-6 py-10 text-center text-sm text-slate-400">No completed transactions yet.</div>
+            @else
+                <ul class="divide-y divide-slate-100">
+                    @foreach ($this->recentTransactions as $tx)
+                        <li class="flex items-center gap-3 px-6 py-3">
+                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">{{ $tx->user?->initials() ?? '—' }}</span>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-medium text-slate-900">{{ $tx->user?->name ?? 'Unknown user' }}</p>
+                                <p class="truncate text-xs text-slate-400">{{ ucfirst($tx->gateway) }} &middot; {{ $tx->created_at->diffForHumans() }}</p>
+                            </div>
+                            <span class="shrink-0 text-sm font-semibold text-slate-900">Rs. {{ number_format($tx->amount, 2) }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </div>
     </div>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">

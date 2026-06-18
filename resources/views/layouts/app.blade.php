@@ -6,6 +6,8 @@
 
         <title>{{ $title ?? config('app.name') }}</title>
 
+        @include('partials.theme-head')
+
         @include('partials.pwa-head')
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -14,8 +16,12 @@
 
         @livewireStyles
     </head>
-    <body>
+    <body class="bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
         {{ $slot }}
+
+        @auth
+            <livewire:feedback />
+        @endauth
 
         @livewireScripts
     </body>

@@ -339,21 +339,22 @@ new class extends Component
     x-init="$store.preview.html = @js($activeSection ? \App\Support\SectionContent::toHtml($activeSection->content) : ''); $store.preview.title = @js($activeSection?->title ?? '')"
     class="flex min-h-screen flex-col bg-gray-100 lg:h-screen lg:overflow-hidden"
 >
-    <header class="z-20 border-b border-gray-200 bg-white">
+    <header class="z-20 border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
         <div class="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
             <div class="min-w-0">
-                <a href="{{ route('reports.cover', ['report' => $report]) }}" class="text-xs font-medium text-indigo-600 hover:text-indigo-500">&larr; Back to cover</a>
-                <h1 class="truncate text-sm font-semibold text-gray-900">{{ $report->module_code }} &middot; {{ $report->module_title }}</h1>
+                <a href="{{ route('reports.cover', ['report' => $report]) }}" class="text-xs font-medium text-indigo-600 hover:text-indigo-500">&larr; {{ __('Back to cover') }}</a>
+                <h1 class="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{{ $report->module_code }} &middot; {{ $report->module_title }}</h1>
             </div>
             <div class="flex shrink-0 flex-wrap items-center gap-2">
                 <button type="button" @click="editorOpen = true" class="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 lg:hidden">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
-                    Edit chapters
+                    {{ __('Edit chapters') }}
                 </button>
                 <livewire:manage-references :report="$report" />
                 <a href="{{ route('reports.output', ['report' => $report]) }}" class="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500">
-                    View full report
+                    {{ __('View full report') }}
                 </a>
+                <x-header-controls />
             </div>
         </div>
     </header>
@@ -367,53 +368,53 @@ new class extends Component
         <aside
             x-ref="editor"
             :class="editorOpen ? 'translate-x-0' : '-translate-x-full'"
-            class="fixed inset-y-0 left-0 z-40 flex w-[92%] max-w-md -translate-x-full flex-col gap-4 overflow-y-auto bg-gray-100 p-4 shadow-xl transition-transform duration-300 lg:static lg:z-auto lg:min-h-0 lg:w-[48%] lg:max-w-none lg:translate-x-0 lg:border-r lg:border-gray-200 lg:shadow-none"
+            class="fixed inset-y-0 left-0 z-40 flex w-[92%] max-w-md -translate-x-full flex-col gap-4 overflow-y-auto bg-gray-100 p-4 shadow-xl transition-transform duration-300 lg:static lg:z-auto lg:min-h-0 lg:w-[48%] lg:max-w-none lg:translate-x-0 lg:border-r lg:border-gray-200 lg:shadow-none dark:bg-gray-900 dark:lg:border-gray-800"
         >
             <div class="flex items-start justify-between">
                 <div>
-                    <h2 class="text-base font-semibold text-gray-900">Content</h2>
-                    <p class="text-xs text-gray-500">Chapters &amp; sources — cite with <code class="rounded bg-gray-200 px-1 text-[11px]">[[key]]</code></p>
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ __('Content') }}</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Chapters & sources — cite with') }} <code class="rounded bg-gray-200 px-1 text-[11px] dark:bg-gray-800 dark:text-gray-200">[[key]]</code></p>
                 </div>
-                <button type="button" @click="editorOpen = false" class="rounded-md p-1.5 text-gray-400 hover:bg-gray-200 lg:hidden" title="Close">
+                <button type="button" @click="editorOpen = false" class="rounded-md p-1.5 text-gray-400 hover:bg-gray-200 lg:hidden dark:hover:bg-gray-800" title="{{ __('Close') }}">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
 
             {{-- Front-matter pages — shown after the cover, before the contents --}}
             <section>
-                <h3 class="px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Front pages</h3>
+                <h3 class="px-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Front pages') }}</h3>
                 <ul wire:sort="reorder" class="mt-2 space-y-3">
                     @forelse ($this->frontPages as $section)
                         @include('reports.partials.section-card', ['section' => $section, 'isFront' => true, 'number' => null])
                     @empty
-                        <li class="rounded-lg bg-white px-3 py-3 text-center text-xs text-gray-400 ring-1 ring-gray-200">No front pages yet</li>
+                        <li class="rounded-lg bg-white px-3 py-3 text-center text-xs text-gray-400 ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">{{ __('No front pages yet') }}</li>
                     @endforelse
                 </ul>
                 <form wire:submit="addFrontPage" class="mt-3 flex gap-1">
-                    <input type="text" wire:model="newFrontPageTitle" placeholder="Add front page — e.g. Acknowledgements" class="block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <button type="submit" class="shrink-0 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">Add</button>
+                    <input type="text" wire:model="newFrontPageTitle" placeholder="{{ __('Add front page — e.g. Acknowledgements') }}" class="block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
+                    <button type="submit" class="shrink-0 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">{{ __('Add') }}</button>
                 </form>
             </section>
 
             {{-- Numbered body sections --}}
             <section>
-                <h3 class="px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Sections</h3>
+                <h3 class="px-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Sections') }}</h3>
                 <ul wire:sort="reorder" class="mt-2 space-y-3">
                     @forelse ($this->bodySections as $section)
                         @include('reports.partials.section-card', ['section' => $section, 'isFront' => false, 'number' => $loop->iteration])
                     @empty
-                        <li class="rounded-lg bg-white px-3 py-3 text-center text-xs text-gray-400 ring-1 ring-gray-200">No sections yet</li>
+                        <li class="rounded-lg bg-white px-3 py-3 text-center text-xs text-gray-400 ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">{{ __('No sections yet') }}</li>
                     @endforelse
                 </ul>
                 <form wire:submit="addSection" class="mt-3 flex gap-1">
-                    <input type="text" wire:model="newSectionTitle" placeholder="Add section — e.g. Introduction" class="block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <button type="submit" class="shrink-0 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">Add</button>
+                    <input type="text" wire:model="newSectionTitle" placeholder="{{ __('Add section — e.g. Introduction') }}" class="block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
+                    <button type="submit" class="shrink-0 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">{{ __('Add') }}</button>
                 </form>
             </section>
         </aside>
 
         {{-- RIGHT: live preview of the compiled report --}}
-        <main x-ref="preview" @scroll="onScroll()" class="min-w-0 min-h-0 flex-1 overflow-y-auto bg-gray-200/70">
+        <main x-ref="preview" @scroll="onScroll()" class="min-w-0 min-h-0 flex-1 overflow-y-auto bg-gray-200/70 dark:bg-gray-950">
             @php($activeId = $this->activePreviewId)
             <div class="report-preview px-4 py-8 sm:px-8">
                 @forelse ($this->preview->frontMatter() as $page)
@@ -442,7 +443,7 @@ new class extends Component
                 @empty
                     @unless ($this->preview->hasFrontMatter())
                         <div class="py-24 text-center text-sm text-gray-400">
-                            Your report preview appears here. Add a section to start writing.
+                            {{ __('Your report preview appears here. Add a section to start writing.') }}
                         </div>
                     @endunless
                 @endforelse

@@ -1,0 +1,32 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('reports', function (Blueprint $table) {
+            $table->boolean('is_sample')->default(false)->index();
+            $table->string('slug')->nullable()->unique();
+        });
+
+        Schema::table('landing_features', function (Blueprint $table) {
+            // Destination URL for a sample card (set by the SampleReportSeeder).
+            $table->string('link')->nullable()->after('icon_path');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('reports', function (Blueprint $table) {
+            $table->dropColumn(['is_sample', 'slug']);
+        });
+
+        Schema::table('landing_features', function (Blueprint $table) {
+            $table->dropColumn('link');
+        });
+    }
+};

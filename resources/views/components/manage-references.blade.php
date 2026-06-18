@@ -243,21 +243,21 @@ new class extends Component
     <button
         type="button"
         wire:click="openModal"
-        class="rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-gray-900 ring-1 ring-gray-300 hover:bg-gray-50"
+        class="rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-gray-900 ring-1 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-100 dark:ring-gray-600 dark:hover:bg-gray-700"
     >
         Manage References
     </button>
 
     @if ($open)
         <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4 py-6" wire:key="ref-modal">
-            <div class="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
-                <div class="flex items-center justify-between border-b border-gray-200 px-5 py-3">
-                    <h3 class="text-base font-semibold text-gray-900">References for this report</h3>
-                    <button type="button" wire:click="closeModal" class="text-gray-400 hover:text-gray-600" aria-label="Close">&times;</button>
+            <div class="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white shadow-xl dark:bg-gray-800">
+                <div class="flex items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-gray-700">
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">References for this report</h3>
+                    <button type="button" wire:click="closeModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" aria-label="Close">&times;</button>
                 </div>
 
-                <div class="border-b border-gray-200 px-5 py-3">
-                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Citation format</p>
+                <div class="border-b border-gray-200 px-5 py-3 dark:border-gray-700">
+                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Citation format</p>
                     <div class="mt-2 flex flex-wrap gap-2">
                         @foreach ([
                             'london_met' => 'London Met',
@@ -267,19 +267,19 @@ new class extends Component
                             <button
                                 type="button"
                                 wire:click="changeFormat('{{ $value }}')"
-                                class="rounded-md px-3 py-1.5 text-sm font-medium ring-1 {{ $format === $value ? 'bg-indigo-600 text-white ring-indigo-600' : 'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50' }}"
+                                class="rounded-md px-3 py-1.5 text-sm font-medium ring-1 {{ $format === $value ? 'bg-indigo-600 text-white ring-indigo-600' : 'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' }}"
                             >
                                 {{ $label }}
                             </button>
                         @endforeach
                     </div>
-                    <p class="mt-1 text-[11px] text-gray-500">You can change the format any time — inline citations and the bibliography are re-rendered automatically.</p>
+                    <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">You can change the format any time — inline citations and the bibliography are re-rendered automatically.</p>
                 </div>
 
                 <div class="grid flex-1 grid-cols-1 gap-0 overflow-y-auto md:grid-cols-2">
                     {{-- Add / edit form --}}
-                    <div class="border-b border-gray-200 px-5 py-4 md:border-b-0 md:border-r">
-                        <p class="text-xs font-medium uppercase tracking-wide text-gray-500">
+                    <div class="border-b border-gray-200 px-5 py-4 md:border-b-0 md:border-r dark:border-gray-700">
+                        <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                             {{ $editingId !== '' ? 'Edit reference' : 'Add reference' }}
                         </p>
 
@@ -293,7 +293,7 @@ new class extends Component
                                 <button
                                     type="button"
                                     wire:click="selectType('{{ $value }}')"
-                                    class="rounded-md px-2.5 py-1 text-xs font-medium ring-1 {{ $type === $value ? 'bg-indigo-600 text-white ring-indigo-600' : 'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50' }}"
+                                    class="rounded-md px-2.5 py-1 text-xs font-medium ring-1 {{ $type === $value ? 'bg-indigo-600 text-white ring-indigo-600' : 'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700' }}"
                                 >
                                     {{ $label }}
                                 </button>
@@ -302,38 +302,38 @@ new class extends Component
 
                         <form wire:submit.prevent="save" class="mt-3 space-y-2">
                             <div>
-                                <label class="block text-[11px] font-medium text-gray-600">Authors <span class="text-gray-400">(comma or "and" separated)</span></label>
-                                <input type="text" wire:model.live.debounce.400ms="form.authors" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. Smith, J.; Doe, A.">
+                                <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300">Authors <span class="text-gray-400 dark:text-gray-500">(comma or "and" separated)</span></label>
+                                <input type="text" wire:model.live.debounce.400ms="form.authors" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600 dark:placeholder-gray-500" placeholder="e.g. Smith, J.; Doe, A.">
                             </div>
 
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label class="block text-[11px] font-medium text-gray-600">Year</label>
-                                    <input type="text" wire:model.live.debounce.400ms="form.year" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. 2023">
+                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300">Year</label>
+                                    <input type="text" wire:model.live.debounce.400ms="form.year" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600 dark:placeholder-gray-500" placeholder="e.g. 2023">
                                 </div>
                                 <div>
-                                    <label class="block text-[11px] font-medium text-gray-600">{{ $type === 'url' ? 'Page title' : 'Title' }}</label>
-                                    <input type="text" wire:model.live.debounce.400ms="form.title" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300">{{ $type === 'url' ? 'Page title' : 'Title' }}</label>
+                                    <input type="text" wire:model.live.debounce.400ms="form.title" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600 dark:placeholder-gray-500">
                                 </div>
                             </div>
 
                             @if ($type === 'journal')
                                 <div>
-                                    <label class="block text-[11px] font-medium text-gray-600">Journal name</label>
-                                    <input type="text" wire:model.live.debounce.400ms="form.journal" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300">Journal name</label>
+                                    <input type="text" wire:model.live.debounce.400ms="form.journal" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600 dark:placeholder-gray-500">
                                 </div>
                                 <div class="grid grid-cols-3 gap-2">
                                     <div>
-                                        <label class="block text-[11px] font-medium text-gray-600">Volume</label>
-                                        <input type="text" wire:model.live.debounce.400ms="form.volume" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300">Volume</label>
+                                        <input type="text" wire:model.live.debounce.400ms="form.volume" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600 dark:placeholder-gray-500">
                                     </div>
                                     <div>
-                                        <label class="block text-[11px] font-medium text-gray-600">Issue</label>
-                                        <input type="text" wire:model.live.debounce.400ms="form.issue" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300">Issue</label>
+                                        <input type="text" wire:model.live.debounce.400ms="form.issue" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600 dark:placeholder-gray-500">
                                     </div>
                                     <div>
-                                        <label class="block text-[11px] font-medium text-gray-600">Pages</label>
-                                        <input type="text" wire:model.live.debounce.400ms="form.pages" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. 12-24">
+                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300">Pages</label>
+                                        <input type="text" wire:model.live.debounce.400ms="form.pages" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600 dark:placeholder-gray-500" placeholder="e.g. 12-24">
                                     </div>
                                 </div>
                             @endif
@@ -341,32 +341,32 @@ new class extends Component
                             @if ($type === 'book')
                                 <div class="grid grid-cols-2 gap-2">
                                     <div>
-                                        <label class="block text-[11px] font-medium text-gray-600">Publisher</label>
-                                        <input type="text" wire:model.live.debounce.400ms="form.publisher" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300">Publisher</label>
+                                        <input type="text" wire:model.live.debounce.400ms="form.publisher" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600 dark:placeholder-gray-500">
                                     </div>
                                     <div>
-                                        <label class="block text-[11px] font-medium text-gray-600">Place</label>
-                                        <input type="text" wire:model.live.debounce.400ms="form.place" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300">Place</label>
+                                        <input type="text" wire:model.live.debounce.400ms="form.place" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600 dark:placeholder-gray-500">
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="block text-[11px] font-medium text-gray-600">Edition <span class="text-gray-400">(optional)</span></label>
-                                    <input type="text" wire:model.live.debounce.400ms="form.edition" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. 2nd">
+                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300">Edition <span class="text-gray-400 dark:text-gray-500">(optional)</span></label>
+                                    <input type="text" wire:model.live.debounce.400ms="form.edition" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600 dark:placeholder-gray-500" placeholder="e.g. 2nd">
                                 </div>
                             @endif
 
                             @if ($type === 'url' || $type === 'article')
                                 <div>
-                                    <label class="block text-[11px] font-medium text-gray-600">{{ $type === 'url' ? 'Site name' : 'Publication' }}</label>
-                                    <input type="text" wire:model.live.debounce.400ms="form.{{ $type === 'url' ? 'site_name' : 'publication' }}" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300">{{ $type === 'url' ? 'Site name' : 'Publication' }}</label>
+                                    <input type="text" wire:model.live.debounce.400ms="form.{{ $type === 'url' ? 'site_name' : 'publication' }}" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600 dark:placeholder-gray-500">
                                 </div>
                                 <div>
-                                    <label class="block text-[11px] font-medium text-gray-600">URL</label>
-                                    <input type="url" wire:model.live.debounce.400ms="form.url" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="https://...">
+                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300">URL</label>
+                                    <input type="url" wire:model.live.debounce.400ms="form.url" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600 dark:placeholder-gray-500" placeholder="https://...">
                                 </div>
                                 <div>
-                                    <label class="block text-[11px] font-medium text-gray-600">Accessed <span class="text-gray-400">(date)</span></label>
-                                    <input type="text" wire:model.live.debounce.400ms="form.accessed" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. 1 May 2026">
+                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300">Accessed <span class="text-gray-400 dark:text-gray-500">(date)</span></label>
+                                    <input type="text" wire:model.live.debounce.400ms="form.accessed" class="mt-0.5 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600 dark:placeholder-gray-500" placeholder="e.g. 1 May 2026">
                                 </div>
                             @endif
 
@@ -375,7 +375,7 @@ new class extends Component
                                     {{ $editingId !== '' ? 'Update reference' : 'Add reference' }}
                                 </button>
                                 @if ($editingId !== '')
-                                    <button type="button" wire:click="cancelEdit" class="rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50">Cancel</button>
+                                    <button type="button" wire:click="cancelEdit" class="rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700">Cancel</button>
                                 @endif
                             </div>
                         </form>
@@ -383,15 +383,15 @@ new class extends Component
 
                     {{-- Existing references --}}
                     <div class="px-5 py-4">
-                        <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Saved references ({{ count($this->references) }})</p>
+                        <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Saved references ({{ count($this->references) }})</p>
 
                         <ul class="mt-2 space-y-2">
                             @forelse ($this->references as $reference)
-                                <li wire:key="ref-{{ $reference->id }}" class="rounded-md p-2 text-sm ring-1 ring-gray-200">
-                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                                <li wire:key="ref-{{ $reference->id }}" class="rounded-md p-2 text-sm ring-1 ring-gray-200 dark:ring-gray-700">
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                         {{ ucfirst($reference->type) }}
                                     </p>
-                                    <p class="mt-0.5 text-sm text-gray-800">
+                                    <p class="mt-0.5 text-sm text-gray-800 dark:text-gray-200">
                                         {!! (new CitationFormatter($format, $this->references))->bibliographyMarker($reference) !!}{!! (new CitationFormatter($format, $this->references))->bibliography($reference) !!}
                                     </p>
                                     <div class="mt-1 flex gap-2 text-xs">
@@ -400,13 +400,13 @@ new class extends Component
                                     </div>
                                 </li>
                             @empty
-                                <li class="rounded-md p-3 text-xs text-gray-500 ring-1 ring-dashed ring-gray-200">No references yet — add your first on the left.</li>
+                                <li class="rounded-md p-3 text-xs text-gray-500 ring-1 ring-dashed ring-gray-200 dark:text-gray-400 dark:ring-gray-700">No references yet — add your first on the left.</li>
                             @endforelse
                         </ul>
                     </div>
                 </div>
 
-                <div class="flex justify-end border-t border-gray-200 px-5 py-3">
+                <div class="flex justify-end border-t border-gray-200 px-5 py-3 dark:border-gray-700">
                     <button type="button" wire:click="closeModal" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">Done</button>
                 </div>
             </div>

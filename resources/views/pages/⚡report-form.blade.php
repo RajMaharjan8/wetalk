@@ -136,7 +136,7 @@ new class extends Component
      */
     protected function redirectToReportLimitNotice()
     {
-        session()->flash('report-limit', 'You already have '.Auth::user()->reports()->count().' of '.User::MAX_REPORTS.' reports. Adding more students to a group project is fine and never counts against this — but to start a brand-new report, delete one of your existing reports first.');
+        session()->flash('report-limit', __('You already have :count of :max reports. Adding more students to a group project is fine and never counts against this — but to start a brand-new report, delete one of your existing reports first.', ['count' => Auth::user()->reports()->count(), 'max' => User::MAX_REPORTS]));
 
         return $this->redirectRoute('reports.index', navigate: true);
     }
@@ -150,25 +150,25 @@ new class extends Component
     protected function validationAttributes(): array
     {
         return [
-            'tu_college_name' => 'campus name',
-            'tu_institute' => 'institute',
-            'tu_department' => 'department',
-            'tu_campus_address' => 'campus address',
-            'tu_report_type' => 'report type',
-            'tu_supervisor_name' => 'supervisor name',
-            'tu_degree' => 'degree',
-            'tu_roll_number' => 'roll number',
-            'student_name' => 'student name',
-            'title' => 'title',
-            'module_code' => 'module code',
-            'module_title' => 'module title',
-            'london_id' => 'London Met ID',
-            'college_id' => 'College ID',
-            'assessment_type' => 'assessment type',
-            'academic_year' => 'academic year',
-            'submission_date' => 'submission date',
-            'assignment_due_date' => 'assignment due date',
-            'custom_cover_id' => 'saved cover',
+            'tu_college_name' => __('campus name'),
+            'tu_institute' => __('institute'),
+            'tu_department' => __('department'),
+            'tu_campus_address' => __('campus address'),
+            'tu_report_type' => __('report type'),
+            'tu_supervisor_name' => __('supervisor name'),
+            'tu_degree' => __('degree'),
+            'tu_roll_number' => __('roll number'),
+            'student_name' => __('student name'),
+            'title' => __('title'),
+            'module_code' => __('module code'),
+            'module_title' => __('module title'),
+            'london_id' => __('London Met ID'),
+            'college_id' => __('College ID'),
+            'assessment_type' => __('assessment type'),
+            'academic_year' => __('academic year'),
+            'submission_date' => __('submission date'),
+            'assignment_due_date' => __('assignment due date'),
+            'custom_cover_id' => __('saved cover'),
         ];
     }
 
@@ -334,7 +334,7 @@ new class extends Component
 
         $this->seedDemoContent();
 
-        session()->flash('demo-added', 'Demo report ready — example cover, an acknowledgement, two sample sections, and a References section with a cited reference were added.');
+        session()->flash('demo-added', __('Demo report ready — example cover, an acknowledgement, two sample sections, and a References section with a cited reference were added.'));
 
         return null;
     }
@@ -546,7 +546,7 @@ new class extends Component
 
         $saved = $this->persist($this->normalizeDates($this->validate($this->draftRules())));
 
-        session()->flash('draft-saved', 'Draft saved — you can safely close this page and finish later.');
+        session()->flash('draft-saved', __('Draft saved — you can safely close this page and finish later.'));
 
         return $this->redirectRoute('reports.edit', ['report' => $saved], navigate: true);
     }
@@ -557,23 +557,25 @@ new class extends Component
     }
 }; ?>
 
-<div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <x-app-header />
+
     <x-validation-popup />
 
-    <div class="mx-auto max-w-3xl">
+    <div class="mx-auto max-w-3xl py-12 px-4 sm:px-6 lg:px-8">
         <div class="mb-6">
-            <a href="{{ route('reports.index') }}" wire:navigate class="text-sm font-medium text-indigo-600 hover:text-indigo-500">&larr; All reports</a>
+            <a href="{{ route('reports.index') }}" wire:navigate class="text-sm font-medium text-indigo-600 hover:text-indigo-500">&larr; {{ __('All reports') }}</a>
         </div>
 
         <div class="mb-8 text-center">
-            <h1 class="text-3xl font-semibold text-gray-900">
-                {{ $this->isEditing() ? 'Edit Cover Page' : 'Assignment Cover Page Generator' }}
+            <h1 class="text-3xl font-semibold font-display text-gray-900 dark:text-gray-100">
+                {{ $this->isEditing() ? __('Edit Cover Page') : __('Assignment Cover Page Generator') }}
             </h1>
-            <p class="mt-2 text-sm text-gray-600">
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
                 @if ($cover_format === 'tu')
                     Tribhuvan University
                 @elseif ($cover_format === 'custom')
-                    Your custom cover design
+                    {{ __('Your custom cover design') }}
                 @else
                     Islington College &middot; London Metropolitan University
                 @endif
@@ -582,148 +584,148 @@ new class extends Component
             <div class="mt-4">
                 <button type="button" wire:click="autofill" class="inline-flex items-center gap-1.5 rounded-md bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-100">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" /></svg>
-                    <span wire:loading.remove wire:target="autofill">Auto-generate demo report</span>
-                    <span wire:loading wire:target="autofill">Generating…</span>
+                    <span wire:loading.remove wire:target="autofill">{{ __('Auto-generate demo report') }}</span>
+                    <span wire:loading wire:target="autofill">{{ __('Generating…') }}</span>
                 </button>
-                <p class="mt-1 text-xs text-gray-400">Fills the cover, then adds two sample sections and a cited reference so you can preview a full report. Your entries are kept.</p>
+                <p class="mt-1 text-xs text-gray-400">{{ __('Fills the cover, then adds two sample sections and a cited reference so you can preview a full report. Your entries are kept.') }}</p>
             </div>
         </div>
 
         @if (session('draft-saved'))
-            <div class="mb-6 rounded-md bg-green-50 px-4 py-3 text-sm font-medium text-green-800 ring-1 ring-green-200">
+            <div class="mb-6 rounded-md bg-green-50 px-4 py-3 text-sm font-medium text-green-800 ring-1 ring-green-200 dark:bg-green-500/10 dark:text-green-300 dark:ring-green-500/20">
                 {{ session('draft-saved') }}
             </div>
         @endif
 
         @if (session('demo-added') && $this->report)
-            <div class="mb-6 rounded-md bg-green-50 px-4 py-3 text-sm text-green-800 ring-1 ring-green-200">
+            <div class="mb-6 rounded-md bg-green-50 px-4 py-3 text-sm text-green-800 ring-1 ring-green-200 dark:bg-green-500/10 dark:text-green-300 dark:ring-green-500/20">
                 <p class="font-medium">{{ session('demo-added') }}</p>
                 <p class="mt-1">
-                    <a href="{{ route('reports.sections', $report) }}" wire:navigate class="font-semibold underline hover:text-green-900">Write content &rarr;</a>
+                    <a href="{{ route('reports.sections', $report) }}" wire:navigate class="font-semibold underline hover:text-green-900">{{ __('Write content') }} &rarr;</a>
                     <span class="mx-1 text-green-400">&middot;</span>
-                    <a href="{{ route('reports.output', $report) }}" class="font-semibold underline hover:text-green-900">Preview full report &rarr;</a>
+                    <a href="{{ route('reports.output', $report) }}" class="font-semibold underline hover:text-green-900">{{ __('Preview full report') }} &rarr;</a>
                 </p>
             </div>
         @endif
 
-        <form wire:submit="save" class="space-y-8 rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-200 sm:p-8">
+        <form wire:submit="save" class="space-y-8 rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700 sm:p-8">
             <section>
-                <h2 class="text-base font-semibold text-gray-900">Cover format</h2>
+                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ __('Cover format') }}</h2>
 
                 <div class="mt-4">
-                    <label for="cover_format" class="block text-sm font-medium text-gray-700">Choose a cover page style</label>
-                    <select id="cover_format" wire:model.live="cover_format" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <label for="cover_format" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Choose a cover page style') }}</label>
+                    <select id="cover_format" wire:model.live="cover_format" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                         <option value="london_met">London Metropolitan University</option>
                         <option value="tu">Tribhuvan University (TU)</option>
                         @if ($this->coverTemplates->isNotEmpty())
-                            <option value="custom">My custom cover</option>
+                            <option value="custom">{{ __('My custom cover') }}</option>
                         @endif
                     </select>
-                    <p class="mt-1 text-xs text-gray-500">This decides which cover layout and fields are used.</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('This decides which cover layout and fields are used.') }}</p>
                     @error('cover_format') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
 
                     @if ($cover_format === 'custom')
                         <div class="mt-4">
-                            <label for="custom_cover_id" class="block text-sm font-medium text-gray-700">Choose your saved cover <span class="text-red-500">*</span></label>
-                            <select id="custom_cover_id" wire:model="custom_cover_id" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                <option value="">&mdash; Select a cover &mdash;</option>
+                            <label for="custom_cover_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Choose your saved cover') }} <span class="text-red-500">*</span></label>
+                            <select id="custom_cover_id" wire:model="custom_cover_id" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
+                                <option value="">&mdash; {{ __('Select a cover') }} &mdash;</option>
                                 @foreach ($this->coverTemplates as $template)
                                     <option value="{{ $template->id }}">{{ $template->name }}</option>
                                 @endforeach
                             </select>
-                            <p class="mt-1 text-xs text-gray-500">Your designed cover is used as the cover page. <a href="{{ route('cover.templates') }}" class="font-medium text-indigo-600 hover:text-indigo-500">Design or edit covers &rarr;</a></p>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Your designed cover is used as the cover page.') }} <a href="{{ route('cover.templates') }}" class="font-medium text-indigo-600 hover:text-indigo-500">{{ __('Design or edit covers') }} &rarr;</a></p>
                             @error('custom_cover_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                     @else
-                        <p class="mt-2 text-xs text-gray-500">Want your own design? <a href="{{ route('cover.templates') }}" class="font-medium text-indigo-600 hover:text-indigo-500">Open the Cover Designer &rarr;</a></p>
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ __('Want your own design?') }} <a href="{{ route('cover.templates') }}" class="font-medium text-indigo-600 hover:text-indigo-500">{{ __('Open the Cover Designer') }} &rarr;</a></p>
                     @endif
                 </div>
             </section>
 
             <section>
-                <h2 class="text-base font-semibold text-gray-900">Report</h2>
+                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ __('Report') }}</h2>
 
                 <div class="mt-4 grid grid-cols-1 gap-4">
                     <div>
-                        <label for="title" class="block text-sm font-medium text-gray-700">
-                            {{ $cover_format === 'tu' ? 'Assignment title' : 'Report title' }} <span class="text-red-500">*</span>
+                        <label for="title" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {{ $cover_format === 'tu' ? __('Assignment title') : __('Report title') }} <span class="text-red-500">*</span>
                         </label>
-                        <input type="text" id="title" wire:model="title" placeholder="{{ $cover_format === 'tu' ? 'e.g. Energy, Finance and Economics — Assignment No. 10' : "e.g. Amazon's Fulfilment Network" }}" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <p class="mt-1 text-xs text-gray-500">Shown on the cover and title page, and used as the report heading.</p>
+                        <input type="text" id="title" wire:model="title" placeholder="{{ $cover_format === 'tu' ? __('e.g. Energy, Finance and Economics — Assignment No. 10') : __("e.g. Amazon's Fulfilment Network") }}" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Shown on the cover and title page, and used as the report heading.') }}</p>
                         @error('title') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     @if ($this->isEditing())
                         <div>
-                            <label for="abstract" class="block text-sm font-medium text-gray-700">Abstract <span class="text-xs font-normal text-gray-400">(optional)</span></label>
-                            <textarea id="abstract" wire:model="abstract" rows="5" placeholder="A short summary of the report. Appears on its own page before the contents." class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                            <label for="abstract" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Abstract') }} <span class="text-xs font-normal text-gray-400">{{ __('(optional)') }}</span></label>
+                            <textarea id="abstract" wire:model="abstract" rows="5" placeholder="{{ __('A short summary of the report. Appears on its own page before the contents.') }}" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600"></textarea>
                             @error('abstract') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
 
                         <div>
-                            <label for="section_label" class="block text-sm font-medium text-gray-700">Section heading word</label>
-                            <input type="text" id="section_label" wire:model="section_label" placeholder="e.g. Chapter" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <p class="mt-1 text-xs text-gray-500">Leave blank to number sections <strong>1.</strong>, <strong>2.</strong> &hellip; Enter a word like <strong>Chapter</strong> to get <strong>Chapter 1</strong>, <strong>Chapter 2</strong>.</p>
+                            <label for="section_label" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Section heading word') }}</label>
+                            <input type="text" id="section_label" wire:model="section_label" placeholder="{{ __('e.g. Chapter') }}" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Leave blank to number sections') }} <strong>1.</strong>, <strong>2.</strong> &hellip; {{ __('Enter a word like') }} <strong>Chapter</strong> {{ __('to get') }} <strong>Chapter 1</strong>, <strong>Chapter 2</strong>.</p>
                             @error('section_label') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                     @else
-                        <p class="text-xs text-gray-500">You can add an abstract and customize section numbering later from the cover page.</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('You can add an abstract and customize section numbering later from the cover page.') }}</p>
                     @endif
                 </div>
             </section>
 
             @if ($cover_format === 'tu')
             <section>
-                <h2 class="text-base font-semibold text-gray-900">Institute &amp; campus</h2>
+                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ __('Institute & campus') }}</h2>
 
                 <div class="mt-4 grid grid-cols-1 gap-4">
                     <div>
-                        <label for="tu_institute" class="block text-sm font-medium text-gray-700">Institute</label>
-                        <input type="text" id="tu_institute" wire:model="tu_institute" placeholder="e.g. Institute of Science and Technology" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <p class="mt-1 text-xs text-gray-500">Examples: Institute of Engineering, Institute of Science and Technology, Institute of Medicine.</p>
+                        <label for="tu_institute" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Institute') }}</label>
+                        <input type="text" id="tu_institute" wire:model="tu_institute" placeholder="{{ __('e.g. Institute of Science and Technology') }}" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Examples: Institute of Engineering, Institute of Science and Technology, Institute of Medicine.') }}</p>
                         @error('tu_institute') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label for="tu_college_name" class="block text-sm font-medium text-gray-700">Campus name <span class="text-red-500">*</span></label>
-                        <input type="text" id="tu_college_name" wire:model="tu_college_name" placeholder="e.g. Amrit Campus" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label for="tu_college_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Campus name') }} <span class="text-red-500">*</span></label>
+                        <input type="text" id="tu_college_name" wire:model="tu_college_name" placeholder="{{ __('e.g. Amrit Campus') }}" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                         @error('tu_college_name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label for="tu_department" class="block text-sm font-medium text-gray-700">Department</label>
-                        <input type="text" id="tu_department" wire:model="tu_department" placeholder="e.g. Department of Computer Science &amp; Information Technology" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label for="tu_department" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Department') }}</label>
+                        <input type="text" id="tu_department" wire:model="tu_department" placeholder="{{ __('e.g. Department of Computer Science & Information Technology') }}" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                         @error('tu_department') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label for="tu_campus_address" class="block text-sm font-medium text-gray-700">Campus address</label>
-                        <input type="text" id="tu_campus_address" wire:model="tu_campus_address" placeholder="e.g. Thamel, Kathmandu" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label for="tu_campus_address" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Campus address') }}</label>
+                        <input type="text" id="tu_campus_address" wire:model="tu_campus_address" placeholder="{{ __('e.g. Thamel, Kathmandu') }}" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                         @error('tu_campus_address') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </section>
 
             <section>
-                <h2 class="text-base font-semibold text-gray-900">Report &amp; degree</h2>
+                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ __('Report & degree') }}</h2>
 
                 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <label for="tu_report_type" class="block text-sm font-medium text-gray-700">Report type</label>
-                        <input type="text" id="tu_report_type" wire:model="tu_report_type" placeholder="e.g. Project Work Report" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label for="tu_report_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Report type') }}</label>
+                        <input type="text" id="tu_report_type" wire:model="tu_report_type" placeholder="{{ __('e.g. Project Work Report') }}" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                         @error('tu_report_type') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label for="tu_supervisor_name" class="block text-sm font-medium text-gray-700">Supervisor name</label>
-                        <input type="text" id="tu_supervisor_name" wire:model="tu_supervisor_name" placeholder="e.g. Mr. Akkal Bahadur Bist" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label for="tu_supervisor_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Supervisor name') }}</label>
+                        <input type="text" id="tu_supervisor_name" wire:model="tu_supervisor_name" placeholder="{{ __('e.g. Mr. Akkal Bahadur Bist') }}" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                         @error('tu_supervisor_name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label for="tu_degree" class="block text-sm font-medium text-gray-700">Degree (long form)</label>
-                        <input type="text" id="tu_degree" wire:model="tu_degree" placeholder="e.g. Bachelor of Science in Computer Science and Information Technology (B.Sc. CSIT)" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <p class="mt-1 text-xs text-gray-500">Goes into "In partial fulfillment of the requirements for the …".</p>
+                        <label for="tu_degree" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Degree (long form)') }}</label>
+                        <input type="text" id="tu_degree" wire:model="tu_degree" placeholder="{{ __('e.g. Bachelor of Science in Computer Science and Information Technology (B.Sc. CSIT)') }}" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Goes into "In partial fulfillment of the requirements for the …".') }}</p>
                         @error('tu_degree') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
@@ -731,84 +733,84 @@ new class extends Component
 
             <section>
                 <div class="flex items-end justify-between">
-                    <h2 class="text-base font-semibold text-gray-900">Submitted by</h2>
-                    <button type="button" wire:click="addTuStudent" class="text-xs font-semibold text-indigo-600 hover:text-indigo-500">+ Add another student</button>
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ __('Submitted by') }}</h2>
+                    <button type="button" wire:click="addTuStudent" class="text-xs font-semibold text-indigo-600 hover:text-indigo-500">+ {{ __('Add another student') }}</button>
                 </div>
 
-                <p class="mt-1 text-xs text-gray-500">Use this for group projects. The first student is also used as the main student name on the report.</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Use this for group projects. The first student is also used as the main student name on the report.') }}</p>
 
                 <div class="mt-4">
-                    <label for="tu_semester" class="block text-sm font-medium text-gray-700">Semester</label>
-                    <input type="text" id="tu_semester" wire:model="semester" placeholder="e.g. VII Semester" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <p class="mt-1 text-xs text-gray-500">Optional. Shown after the roll number on the declaration page (e.g. &ldquo;VII Semester&rdquo;).</p>
+                    <label for="tu_semester" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Semester') }}</label>
+                    <input type="text" id="tu_semester" wire:model="semester" placeholder="{{ __('e.g. VII Semester') }}" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Optional. Shown after the roll number on the declaration page (e.g. “VII Semester”).') }}</p>
                     @error('semester') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 @if ($tu_students === [])
                     <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div class="sm:col-span-2">
-                            <label for="tu_student_name" class="block text-sm font-medium text-gray-700">Name <span class="text-red-500">*</span></label>
+                            <label for="tu_student_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Name') }} <span class="text-red-500">*</span></label>
                             <div class="mt-1 flex gap-2">
-                                <select wire:model="student_title" class="w-24 shrink-0 rounded-md px-2 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <select wire:model="student_title" class="w-24 shrink-0 rounded-md px-2 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                                     @foreach (self::TITLES as $option)
                                         <option value="{{ $option }}">{{ $option }}</option>
                                     @endforeach
                                 </select>
-                                <input type="text" id="tu_student_name" wire:model="student_name" class="block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input type="text" id="tu_student_name" wire:model="student_name" class="block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                             </div>
                             @error('student_name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
 
                         <div>
-                            <label for="tu_roll_number" class="block text-sm font-medium text-gray-700">Roll number <span class="text-red-500">*</span></label>
-                            <input type="text" id="tu_roll_number" wire:model="tu_roll_number" placeholder="e.g. 700076" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <label for="tu_roll_number" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Roll number') }} <span class="text-red-500">*</span></label>
+                            <input type="text" id="tu_roll_number" wire:model="tu_roll_number" placeholder="{{ __('e.g. 700076') }}" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                             @error('tu_roll_number') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
 
                         <div>
-                            <label for="tu_submission_date" class="block text-sm font-medium text-gray-700">Date</label>
-                            <input type="date" id="tu_submission_date" wire:model="submission_date" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <label for="tu_submission_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Date') }}</label>
+                            <input type="date" id="tu_submission_date" wire:model="submission_date" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                             @error('submission_date') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                     </div>
                 @else
                     <div class="mt-4 space-y-4">
                         @foreach ($tu_students as $index => $student)
-                            <div wire:key="tu-student-{{ $index }}" class="grid grid-cols-1 gap-3 rounded-md ring-1 ring-gray-200 p-3 sm:grid-cols-12">
+                            <div wire:key="tu-student-{{ $index }}" class="grid grid-cols-1 gap-3 rounded-md ring-1 ring-gray-200 dark:ring-gray-700 p-3 sm:grid-cols-12">
                                 <div class="sm:col-span-2">
-                                    <label class="block text-xs font-medium text-gray-700">Title</label>
-                                    <select wire:model="tu_students.{{ $index }}.title" class="mt-1 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">{{ __('Title') }}</label>
+                                    <select wire:model="tu_students.{{ $index }}.title" class="mt-1 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                                         @foreach (self::TITLES as $option)
                                             <option value="{{ $option }}">{{ $option }}</option>
                                         @endforeach
                                     </select>
                                 </div>
                                 <div class="sm:col-span-4">
-                                    <label class="block text-xs font-medium text-gray-700">Name</label>
-                                    <input type="text" wire:model="tu_students.{{ $index }}.name" class="mt-1 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">{{ __('Name') }}</label>
+                                    <input type="text" wire:model="tu_students.{{ $index }}.name" class="mt-1 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                                 </div>
                                 <div class="sm:col-span-3">
-                                    <label class="block text-xs font-medium text-gray-700">Roll No.</label>
-                                    <input type="text" wire:model="tu_students.{{ $index }}.roll" placeholder="700076" class="mt-1 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">{{ __('Roll No.') }}</label>
+                                    <input type="text" wire:model="tu_students.{{ $index }}.roll" placeholder="700076" class="mt-1 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                                 </div>
                                 <div class="sm:col-span-2">
-                                    <label class="block text-xs font-medium text-gray-700">Batch</label>
-                                    <input type="text" wire:model="tu_students.{{ $index }}.batch" placeholder="2079" class="mt-1 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">{{ __('Batch') }}</label>
+                                    <input type="text" wire:model="tu_students.{{ $index }}.batch" placeholder="2079" class="mt-1 block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                                 </div>
                                 <div class="sm:col-span-1 flex items-end">
-                                    <button type="button" wire:click="removeTuStudent({{ $index }})" class="rounded-md px-2 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50" title="Remove">&times;</button>
+                                    <button type="button" wire:click="removeTuStudent({{ $index }})" class="rounded-md px-2 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50" title="{{ __('Remove') }}">&times;</button>
                                 </div>
                             </div>
                         @endforeach
                     </div>
 
                     @if ($errors->has('student_name') || $errors->has('tu_roll_number'))
-                        <p class="mt-2 text-xs text-red-600">The first student needs a name and roll number — they appear as the main student on the report.</p>
+                        <p class="mt-2 text-xs text-red-600">{{ __('The first student needs a name and roll number — they appear as the main student on the report.') }}</p>
                     @endif
 
                     <div class="mt-3">
-                        <label for="tu_submission_date" class="block text-sm font-medium text-gray-700">Submission date</label>
-                        <input type="date" id="tu_submission_date" wire:model="submission_date" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label for="tu_submission_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Submission date') }}</label>
+                        <input type="date" id="tu_submission_date" wire:model="submission_date" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                         @error('submission_date') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                 @endif
@@ -817,106 +819,106 @@ new class extends Component
 
             @if ($cover_format === 'london_met')
             <section>
-                <h2 class="text-base font-semibold text-gray-900">Module</h2>
+                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ __('Module') }}</h2>
 
                 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <div>
-                        <label for="module_code" class="block text-sm font-medium text-gray-700">Module code <span class="text-red-500">*</span></label>
-                        <input type="text" id="module_code" wire:model="module_code" placeholder="e.g. MN7983NI" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label for="module_code" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Module code') }} <span class="text-red-500">*</span></label>
+                        <input type="text" id="module_code" wire:model="module_code" placeholder="e.g. MN7983NI" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                         @error('module_code') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label for="module_title" class="block text-sm font-medium text-gray-700">Module title <span class="text-red-500">*</span></label>
-                        <input type="text" id="module_title" wire:model="module_title" placeholder="e.g. Management Learning and Research" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label for="module_title" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Module title') }} <span class="text-red-500">*</span></label>
+                        <input type="text" id="module_title" wire:model="module_title" placeholder="{{ __('e.g. Management Learning and Research') }}" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                         @error('module_title') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label for="assessment_type" class="block text-sm font-medium text-gray-700">Assessment type</label>
-                        <input type="text" id="assessment_type" wire:model="assessment_type" placeholder="e.g. Individual Report" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label for="assessment_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Assessment type') }}</label>
+                        <input type="text" id="assessment_type" wire:model="assessment_type" placeholder="{{ __('e.g. Individual Report') }}" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                         @error('assessment_type') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label for="semester" class="block text-sm font-medium text-gray-700">Semester</label>
-                        <select id="semester" wire:model="semester" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option value="">&mdash; Select &mdash;</option>
-                            <option value="Spring">Spring</option>
-                            <option value="Autumn">Autumn</option>
-                            <option value="Spring/Autumn">Spring/Autumn</option>
+                        <label for="semester" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Semester') }}</label>
+                        <select id="semester" wire:model="semester" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
+                            <option value="">&mdash; {{ __('Select') }} &mdash;</option>
+                            <option value="Spring">{{ __('Spring') }}</option>
+                            <option value="Autumn">{{ __('Autumn') }}</option>
+                            <option value="Spring/Autumn">{{ __('Spring/Autumn') }}</option>
                         </select>
                         @error('semester') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label for="academic_year" class="block text-sm font-medium text-gray-700">Academic year</label>
-                        <input type="text" id="academic_year" wire:model="academic_year" placeholder="e.g. 2024/25" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label for="academic_year" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Academic year') }}</label>
+                        <input type="text" id="academic_year" wire:model="academic_year" placeholder="e.g. 2024/25" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                         @error('academic_year') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </section>
 
             <section>
-                <h2 class="text-base font-semibold text-gray-900">Student</h2>
+                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ __('Student') }}</h2>
 
                 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div class="sm:col-span-2">
-                        <label for="student_name" class="block text-sm font-medium text-gray-700">Student name <span class="text-red-500">*</span></label>
-                        <input type="text" id="student_name" wire:model="student_name" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label for="student_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Student name') }} <span class="text-red-500">*</span></label>
+                        <input type="text" id="student_name" wire:model="student_name" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                         @error('student_name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label for="london_id" class="block text-sm font-medium text-gray-700">London Met ID <span class="text-red-500">*</span></label>
-                        <input type="text" id="london_id" wire:model="london_id" placeholder="e.g. 25030253" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label for="london_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">London Met ID <span class="text-red-500">*</span></label>
+                        <input type="text" id="london_id" wire:model="london_id" placeholder="e.g. 25030253" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                         @error('london_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label for="college_id" class="block text-sm font-medium text-gray-700">College ID <span class="text-red-500">*</span></label>
-                        <input type="text" id="college_id" wire:model="college_id" placeholder="e.g. np01mb7a250180@islingtoncollege.edu.np" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label for="college_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">College ID <span class="text-red-500">*</span></label>
+                        <input type="text" id="college_id" wire:model="college_id" placeholder="e.g. np01mb7a250180@islingtoncollege.edu.np" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                         @error('college_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </section>
 
             <section>
-                <h2 class="text-base font-semibold text-gray-900">Submission</h2>
+                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ __('Submission') }}</h2>
 
                 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <label for="assignment_due_date" class="block text-sm font-medium text-gray-700">Assignment due date</label>
-                        <input type="date" id="assignment_due_date" wire:model="assignment_due_date" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label for="assignment_due_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Assignment due date') }}</label>
+                        <input type="date" id="assignment_due_date" wire:model="assignment_due_date" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                         @error('assignment_due_date') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label for="submission_date" class="block text-sm font-medium text-gray-700">Submission date</label>
-                        <input type="date" id="submission_date" wire:model="submission_date" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label for="submission_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Submission date') }}</label>
+                        <input type="date" id="submission_date" wire:model="submission_date" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                         @error('submission_date') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label for="submitted_to" class="block text-sm font-medium text-gray-700">Submitted to</label>
-                        <input type="text" id="submitted_to" wire:model="submitted_to" placeholder="e.g. Ichchhuk Poudel" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label for="submitted_to" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Submitted to') }}</label>
+                        <input type="text" id="submitted_to" wire:model="submitted_to" placeholder="e.g. Ichchhuk Poudel" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                         @error('submitted_to') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </section>
             @endif
 
-            <div class="flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 pt-6">
+            <div class="flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-700 pt-6">
                 @if ($this->isEditing())
-                    <a href="{{ route('reports.cover', ['report' => $report]) }}" wire:navigate class="mr-auto text-sm font-medium text-gray-600 hover:text-gray-900">Cancel</a>
+                    <a href="{{ route('reports.cover', ['report' => $report]) }}" wire:navigate class="mr-auto text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300">{{ __('Cancel') }}</a>
                 @endif
-                <button type="button" wire:click="saveDraft" class="inline-flex items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-gray-300 hover:bg-gray-50">
-                    <span wire:loading.remove wire:target="saveDraft">Save draft</span>
-                    <span wire:loading wire:target="saveDraft">Saving...</span>
+                <button type="button" wire:click="saveDraft" class="inline-flex items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-100 dark:ring-gray-600 dark:hover:bg-gray-700">
+                    <span wire:loading.remove wire:target="saveDraft">{{ __('Save draft') }}</span>
+                    <span wire:loading wire:target="saveDraft">{{ __('Saving...') }}</span>
                 </button>
                 <button type="submit" class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
-                    <span wire:loading.remove wire:target="save">{{ $this->isEditing() ? 'Save changes' : 'Generate cover page' }}</span>
-                    <span wire:loading wire:target="save">{{ $this->isEditing() ? 'Saving...' : 'Generating...' }}</span>
+                    <span wire:loading.remove wire:target="save">{{ $this->isEditing() ? __('Save changes') : __('Generate cover page') }}</span>
+                    <span wire:loading wire:target="save">{{ $this->isEditing() ? __('Saving...') : __('Generating...') }}</span>
                 </button>
             </div>
         </form>

@@ -60,6 +60,8 @@ class Report extends Model
         'submission_date',
         'submitted_to',
         'arabic_start_page',
+        'is_sample',
+        'slug',
     ];
 
     /**
@@ -87,6 +89,7 @@ class Report extends Model
             'tu_students' => 'array',
             'heading_uppercase' => 'boolean',
             'front_overrides' => 'array',
+            'is_sample' => 'boolean',
         ];
     }
 
@@ -101,6 +104,21 @@ class Report extends Model
         return $this->cover_format === 'tu'
             ? ['cover', 'declaration', 'recommendation', 'certificate']
             : ['cover'];
+    }
+
+    /**
+     * The effective cover type for reporting: 'custom' when a saved custom
+     * cover has been applied, otherwise the report's 'tu'/'london_met' format.
+     */
+    public function coverType(): string
+    {
+        $cover = (string) ($this->front_overrides['cover'] ?? '');
+
+        if (str_contains($cover, 'cover-custom')) {
+            return 'custom';
+        }
+
+        return $this->cover_format === 'tu' ? 'tu' : 'london_met';
     }
 
     /**

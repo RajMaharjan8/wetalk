@@ -3,9 +3,33 @@
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 
+/* Class-based dark mode: `dark:` utilities apply under <html class="dark">. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Serif display face for headline accents — matches the landing page feel. */
+    --font-display: 'Georgia', 'Cambria', 'Times New Roman', serif;
+
+    /* Brand primary = royal blue. The app uses the `indigo-*` scale as its single
+       accent everywhere, so remapping it here re-tones every primary button,
+       link, ring and badge across the whole app (and admin) to royal blue
+       without touching individual files. indigo-600 is the primary. */
+    --color-indigo-50: #eff6ff;
+    --color-indigo-100: #dbeafe;
+    --color-indigo-200: #bfdbfe;
+    --color-indigo-300: #93c5fd;
+    --color-indigo-400: #60a5fa;
+    --color-indigo-500: #2563eb; /* hover (one step lighter than primary) */
+    --color-indigo-600: #1d4ed8; /* PRIMARY — royal blue */
+    --color-indigo-700: #1e40af;
+    --color-indigo-800: #1e3a8a;
+    --color-indigo-900: #1e3a8a;
 }
+
+/* Headline accent — a refined serif, used on key page titles. */
+.font-display { font-family: var(--font-display); }
 
 /* Hide Alpine-controlled elements until Alpine initialises */
 [x-cloak] { display: none !important; }
@@ -277,6 +301,26 @@
 .se-content .references-list-remove:hover {
     color: #4c1d95;
 }
+
+/* ---- Dark mode for the section editor surface & toolbar ----
+   (The A4 preview sheets stay white — they represent the printed page.) */
+.dark .se-toolbar { border-bottom-color: #374151; }
+.dark .toolbar-btn { color: #d1d5db; }
+.dark .toolbar-btn:hover { background: #374151; }
+.dark .se-group-label { color: #9ca3af; }
+.dark .toolbar-divider { background: #4b5563; }
+
+.dark .se-content { color: #e5e7eb; }
+.dark .se-content:empty::before { color: #6b7280; }
+.dark .se-content a { color: #818cf8; }
+.dark .se-content th { background: #374151; }
+.dark .se-content th,
+.dark .se-content td { border-color: #4b5563; }
+.dark .se-content figure.image figcaption,
+.dark .se-content table caption { color: #9ca3af; }
+.dark .se-content .ref-cite { background: #312e81; color: #c7d2fe; }
+.dark .se-content .references-list-placeholder { background: #312e81; color: #c7d2fe; border-color: #6366f1; }
+.dark .se-content .references-list-remove { color: #c7d2fe; }
 
 /* ---- Live preview pane (right side of the report editor) ----
    A lightweight, on-screen rendering of the compiled report — not the A4

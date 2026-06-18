@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Middleware\SetLocale;
 use App\Models\CoverTemplate;
 use App\Models\Payment;
 use App\Models\Report;
@@ -10,6 +11,44 @@ use App\Support\ReportCompiler;
 use App\Support\ReportWord;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
+// Public marketing landing page. Signed-in users skip it and go straight to
+// their dashboard.
+Route::get('/', function () {
+    return auth()->check()
+        ? redirect()->route('reports.index')
+        : view('landing');
+})->name('home');
+
+// The landing page reachable directly (the logo links here), so signed-in users
+// can view it too instead of being bounced to their dashboard like "/" does.
+Route::get('/landing', fn () => view('landing'))->name('landing');
+
+// Switch the UI language. Stored in a long-lived cookie and applied by the
+// SetLocale middleware on every request. Available to guests too (login page).
+Route::get('/locale/{locale}', function (string $locale) {
+    abort_unless(in_array($locale, SetLocale::SUPPORTED, true), 404);
+
+    return back()->withCookie(cookie('locale', $locale, 60 * 24 * 365));
+})->name('locale.switch');
+
+// Public, SEO-friendly preview of a seeded sample report. Rendered with the
+// same output view (Paged.js) the dashboard uses, but read-only and free — no
+// auth, no toolbar, no payment gate. Shown to visitors inside an iframe from
+// the landing page's sample cards.
+Route::get('/samples/{report:slug}', function (Report $report) {
+    abort_unless($report->is_sample, 404);
+
+    return view('reports.output', [
+        'report' => $report,
+        'compiler' => ReportCompiler::for($report->load('sections')),
+        'paymentRequired' => false,
+        'downloadUnlocked' => true,
+        'enabledGateways' => [],
+        'downloadPrice' => 0,
+        'sample' => true,
+    ]);
+})->name('samples.show');
 
 // Guest auth: email/password sign-in & registration (with email OTP) alongside
 // Google. Already-authenticated users are bounced to the app by each component.
@@ -30,13 +69,15 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::livewire('/admin', 'pages::admin.dashboard')->name('admin.dashboard');
     Route::livewire('/admin/users', 'pages::admin.users')->name('admin.users');
     Route::livewire('/admin/feedback', 'pages::admin.feedback')->name('admin.feedback');
+    Route::livewire('/admin/landing', 'pages::admin.landing')->name('admin.landing');
+    Route::livewire('/admin/transactions', 'pages::admin.transactions')->name('admin.transactions');
     Route::livewire('/admin/mail', 'pages::admin.mail')->name('admin.mail');
     Route::livewire('/admin/payments', 'pages::admin.payments')->name('admin.payments');
     Route::livewire('/admin/password', 'pages::admin.password')->name('admin.password');
 });
 
 Route::middleware('auth')->group(function () {
-    Route::livewire('/', 'pages::reports-index')->name('reports.index');
+    Route::livewire('/dashboard', 'pages::reports-index')->name('reports.index');
 
     Route::livewire('/check', 'pages::report-check')->name('reports.check');
 

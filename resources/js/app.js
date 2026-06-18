@@ -1,7 +1,54 @@
 import { registerEditorComponent } from './editor'
 
+// Resolve the saved theme — cookie first (works on every page), then
+// localStorage, then OS preference — and apply the <html> class.
+function isDarkPreferred() {
+    try {
+        var m = document.cookie.match(/(?:^|;\s*)theme=(dark|light)/)
+        var t = m ? m[1] : localStorage.getItem('theme')
+        if (t === 'dark') return true
+        if (t === 'light') return false
+        return window.matchMedia('(prefers-color-scheme: dark)').matches
+    } catch (e) {
+        return false
+    }
+}
+
+function applyTheme() {
+    document.documentElement.classList.toggle('dark', isDarkPreferred())
+}
+
+// Re-apply after every SPA navigation (wire:navigate swaps the document and
+// the no-flash <head> script does NOT re-run), so the theme stays consistent
+// across page transitions and browser back/forward.
+document.addEventListener('livewire:navigated', function () {
+    applyTheme()
+    if (window.Alpine && window.Alpine.store('theme')) {
+        window.Alpine.store('theme').dark = document.documentElement.classList.contains('dark')
+    }
+})
+
 document.addEventListener('alpine:init', () => {
     registerEditorComponent(window.Alpine)
+
+    // Light/dark theme. The <html> class is set by an inline no-flash script
+    // before paint and re-applied on navigation; this store keeps it in sync
+    // and persists changes to both a cookie and localStorage.
+    window.Alpine.store('theme', {
+        dark: document.documentElement.classList.contains('dark'),
+        toggle() {
+            this.dark = !this.dark
+            document.documentElement.classList.toggle('dark', this.dark)
+            var value = this.dark ? 'dark' : 'light'
+            try {
+                localStorage.setItem('theme', value)
+            } catch (e) { /* ignore storage errors */ }
+            // Persist to a cookie too so every page — including standalone pages
+            // with their own <head> (report cover/output) — applies the same
+            // theme consistently before paint.
+            document.cookie = 'theme=' + value + ';path=/;max-age=31536000;samesite=lax'
+        },
+    })
 
     // Shared live-preview state: the section editor mirrors its content here as
     // the user types, and the preview pane on the report editor reads from it.
