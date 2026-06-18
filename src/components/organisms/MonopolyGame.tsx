@@ -22,6 +22,7 @@ import {
   TEMPLATE_PROPERTIES,
   buildBoard,
   defaultConfig,
+  normalizeGame,
   rentFor,
   reshuffleDares,
   sellValueFor,
@@ -100,7 +101,9 @@ export default function MonopolyGame({
 
   useEffect(() => {
     const unsub = onSnapshot(ref, (snap) => {
-      setGame(snap.exists() ? (snap.data() as GameState) : null);
+      // normalizeGame backfills fields older docs may lack (config, pot, …) so
+      // reading game.config.* never crashes.
+      setGame(snap.exists() ? normalizeGame(snap.data() as GameState) : null);
       setLoaded(true);
     });
     return () => unsub();

@@ -366,6 +366,34 @@ export const defaultConfig = (): GameConfig => ({
   doubleOrNothing: false,
 });
 
+// Backfill any fields a game doc might be missing — older games saved before
+// these fields existed have no `config`/`pot`/`laps`/`mode`/etc., so reading
+// `game.config.targetScore` would crash. Run this on every doc read so old and
+// new games both render safely.
+export function normalizeGame(g: GameState): GameState {
+  const cfg = g.config ?? ({} as Partial<GameConfig>);
+  return {
+    ...g,
+    mode: g.mode ?? "classic",
+    shuffle: g.shuffle ?? "off",
+    revealDares: g.revealDares ?? true,
+    pot: g.pot ?? 0,
+    laps: g.laps ?? 0,
+    config: {
+      startMoney: cfg.startMoney ?? START_MONEY,
+      passGo: cfg.passGo ?? PASS_GO,
+      properties:
+        cfg.properties ??
+        Object.fromEntries(
+          TEMPLATE_PROPERTIES.map((p) => [p.name, { price: p.price, rent: p.rent }])
+        ),
+      targetScore: cfg.targetScore ?? null,
+      risingStakes: cfg.risingStakes ?? false,
+      doubleOrNothing: cfg.doubleOrNothing ?? false,
+    },
+  };
+}
+
 // Stakes multiplier for rising-stakes Pure Dares: +50% per completed lap.
 export const stakeMultiplier = (laps: number, rising: boolean) =>
   rising ? 1 + 0.5 * laps : 1;
