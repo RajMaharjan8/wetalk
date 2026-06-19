@@ -268,18 +268,39 @@ new #[Layout('layouts::admin')] class extends Component
 
 @php($title = 'Landing page')
 
-<div class="max-w-4xl space-y-8" x-data="{ tab: 'content' }">
+<div class="mx-auto max-w-4xl space-y-6" x-data="{ tab: 'brand', cardTab: 'features' }">
     <x-validation-popup />
 
+    {{-- Page heading --}}
+    <div>
+        <h1 class="text-xl font-semibold text-gray-900">Landing page</h1>
+        <p class="mt-1 text-sm text-gray-500">Everything on the public landing page — pick a tab to edit just that part.</p>
+    </div>
+
     @if (session('landing-saved'))
-        <div class="rounded-md bg-green-50 px-4 py-3 text-sm font-medium text-green-800 ring-1 ring-green-200">{{ session('landing-saved') }}</div>
+        <div x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 4000)"
+             class="flex items-center gap-2 rounded-md bg-green-50 px-4 py-3 text-sm font-medium text-green-800 ring-1 ring-green-200">
+            <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+            {{ session('landing-saved') }}
+        </div>
     @endif
 
-    <p class="text-sm text-gray-500">Everything on the public landing page is managed here — page text, SEO/social meta, footer, and the feature / format / sample cards.</p>
+    {{-- ============ Tab bar ============ --}}
+    <div class="flex flex-wrap gap-1 rounded-lg bg-gray-100 p-1">
+        @foreach (['brand' => 'Brand', 'hero' => 'Hero', 'seo' => 'SEO & social', 'headings' => 'Section headings', 'footer' => 'Footer', 'cards' => 'Cards & samples'] as $key => $label)
+            <button type="button" x-on:click="tab = '{{ $key }}'"
+                    class="rounded-md px-3 py-1.5 text-sm font-medium transition"
+                    :class="tab === '{{ $key }}' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-800'">
+                {{ $label }}
+            </button>
+        @endforeach
+    </div>
 
-    {{-- ============ SEO & social meta ============ --}}
-    <form wire:submit="saveContent" class="space-y-5 rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200">
-        {{-- ============ Brand (logo + site name) ============ --}}
+    {{-- ============ Content form (Brand / Hero / SEO / Headings / Footer) ============ --}}
+    <form wire:submit="saveContent" class="space-y-5" x-show="['brand','hero','seo','headings','footer'].includes(tab)">
+
+        {{-- ---------- Brand ---------- --}}
+        <div x-show="tab === 'brand'" class="space-y-5 rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200">
         <h2 class="text-base font-semibold text-gray-900">Brand</h2>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
@@ -300,8 +321,11 @@ new #[Layout('layouts::admin')] class extends Component
                 </div>
             </div>
         </div>
+        </div>
 
-        <h2 class="border-t border-gray-100 pt-5 text-base font-semibold text-gray-900">SEO &amp; social meta</h2>
+        {{-- ---------- SEO & social ---------- --}}
+        <div x-show="tab === 'seo'" class="space-y-5 rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200">
+        <h2 class="text-base font-semibold text-gray-900">SEO &amp; social meta</h2>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div class="sm:col-span-2">
                 <label class="block text-sm font-medium text-gray-700">Meta title</label>
@@ -336,9 +360,11 @@ new #[Layout('layouts::admin')] class extends Component
                 </div>
             </div>
         </div>
+        </div>
 
-        {{-- ============ Hero ============ --}}
-        <h2 class="border-t border-gray-100 pt-5 text-base font-semibold text-gray-900">Hero banner</h2>
+        {{-- ---------- Hero ---------- --}}
+        <div x-show="tab === 'hero'" class="space-y-5 rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200">
+        <h2 class="text-base font-semibold text-gray-900">Hero banner</h2>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
                 <label class="block text-sm font-medium text-gray-700">Eyebrow</label>
@@ -361,6 +387,14 @@ new #[Layout('layouts::admin')] class extends Component
                 <input type="text" wire:model="content.landing_hero_secondary_label" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
             <div class="sm:col-span-2">
+                <label class="block text-sm font-medium text-gray-700">Trust badges <span class="font-normal text-gray-400">(the ✓ items under the buttons · leave blank to hide)</span></label>
+                <div class="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <input type="text" wire:model="content.landing_hero_badge_1" placeholder="Badge 1" class="block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input type="text" wire:model="content.landing_hero_badge_2" placeholder="Badge 2" class="block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input type="text" wire:model="content.landing_hero_badge_3" placeholder="Badge 3" class="block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+            </div>
+            <div class="sm:col-span-2">
                 <label class="block text-sm font-medium text-gray-700">Hero image <span class="font-normal text-gray-400">(shown on the right of the banner · ≤ 3 MB)</span></label>
                 <input type="file" wire:model="heroImage" accept="image/*" class="mt-1 block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-indigo-700">
                 @error('heroImage') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
@@ -374,9 +408,11 @@ new #[Layout('layouts::admin')] class extends Component
                 </div>
             </div>
         </div>
+        </div>
 
-        {{-- ============ Section headings ============ --}}
-        <h2 class="border-t border-gray-100 pt-5 text-base font-semibold text-gray-900">Section headings</h2>
+        {{-- ---------- Section headings ---------- --}}
+        <div x-show="tab === 'headings'" class="space-y-5 rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200">
+        <h2 class="text-base font-semibold text-gray-900">Section headings</h2>
         <div class="space-y-4">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div><label class="block text-sm font-medium text-gray-700">Features eyebrow</label><input type="text" wire:model="content.landing_features_eyebrow" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
@@ -394,9 +430,11 @@ new #[Layout('layouts::admin')] class extends Component
                 <div class="sm:col-span-3"><label class="block text-sm font-medium text-gray-700">Samples subheading</label><input type="text" wire:model="content.landing_samples_subheading" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
             </div>
         </div>
+        </div>
 
-        {{-- ============ Footer ============ --}}
-        <h2 class="border-t border-gray-100 pt-5 text-base font-semibold text-gray-900">Footer</h2>
+        {{-- ---------- Footer ---------- --}}
+        <div x-show="tab === 'footer'" class="space-y-5 rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200">
+        <h2 class="text-base font-semibold text-gray-900">Footer</h2>
         <div class="grid grid-cols-1 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700">Copyright line <span class="font-normal text-gray-400">(use <code>:year</code> for the year and <code>{company}</code> for the company link)</span></label>
@@ -417,16 +455,22 @@ new #[Layout('layouts::admin')] class extends Component
                 </div>
             </div>
         </div>
+        </div>
 
-        <div class="flex justify-end border-t border-gray-100 pt-4">
+        {{-- Sticky save bar — always reachable while editing any content tab. --}}
+        <div class="sticky bottom-0 z-10 -mx-1 flex items-center justify-end gap-3 rounded-lg border-t border-gray-200 bg-white/90 px-4 py-3 shadow-sm ring-1 ring-gray-200 backdrop-blur">
+            <span wire:loading wire:target="saveContent,logo,ogImage,heroImage" class="text-sm text-gray-400">Saving…</span>
             <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
-                <span wire:loading.remove wire:target="saveContent,logo,ogImage,heroImage">Save landing content</span>
+                <span wire:loading.remove wire:target="saveContent,logo,ogImage,heroImage">Save changes</span>
                 <span wire:loading wire:target="saveContent,logo,ogImage,heroImage">Saving…</span>
             </button>
         </div>
     </form>
 
-    {{-- ============ Sample library generator ============ --}}
+    {{-- ============ Cards & samples tab ============ --}}
+    <div x-show="tab === 'cards'" class="space-y-6">
+
+    {{-- Sample library generator --}}
     <div class="flex flex-col gap-3 rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h2 class="text-base font-semibold text-gray-900">Sample reports library</h2>
@@ -438,7 +482,7 @@ new #[Layout('layouts::admin')] class extends Component
         </button>
     </div>
 
-    {{-- ============ Card add form ============ --}}
+    {{-- Card add form --}}
     <form wire:submit="addCard" class="space-y-4 rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200">
         <h2 class="text-base font-semibold text-gray-900">Add a card</h2>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -481,10 +525,19 @@ new #[Layout('layouts::admin')] class extends Component
         </div>
     </form>
 
-    {{-- ============ Card sections ============ --}}
+    {{-- ============ Card sections (sub-tabbed: one list at a time) ============ --}}
+    <div class="flex flex-wrap gap-1 rounded-lg bg-gray-100 p-1">
+        @foreach (['features' => 'Features', 'formats' => 'University formats', 'samples' => 'Sample reports', 'faqs' => 'FAQs'] as $section => $label)
+            <button type="button" x-on:click="cardTab = '{{ $section }}'"
+                    class="rounded-md px-3 py-1.5 text-sm font-medium transition"
+                    :class="cardTab === '{{ $section }}' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-800'">
+                {{ $label }}
+            </button>
+        @endforeach
+    </div>
+
     @foreach (['features' => 'Features', 'formats' => 'University formats', 'samples' => 'Sample reports', 'faqs' => 'FAQs'] as $section => $label)
-        <div>
-            <h2 class="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">{{ $label }}</h2>
+        <div x-show="cardTab === '{{ $section }}'">
             <ul wire:sort="reorder" class="space-y-2">
                 @forelse ($this->features($section) as $card)
                     <li wire:key="card-{{ $card->id }}" wire:sort:item="{{ $card->id }}" class="rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200 {{ $card->visible ? '' : 'opacity-60' }}">
@@ -545,4 +598,5 @@ new #[Layout('layouts::admin')] class extends Component
             </ul>
         </div>
     @endforeach
+    </div>{{-- /tab: cards --}}
 </div>

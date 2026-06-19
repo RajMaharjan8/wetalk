@@ -1,0 +1,42 @@
+name: deploy
+
+on:
+  push:
+    branches:
+      - ft/staging
+      - ft/live
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    # Pick which environment's secrets to use, based on the branch:
+    #   push to ft/live  -> use the "live" environment
+    #   anything else     -> use the "staging" environment
+    environment: ${{ github.ref_name == 'ft/live' && 'live' || 'staging' }}
+
+    steps:
+      # 1. Get the code onto the GitHub runner
+      - uses: actions/checkout@v4
+
+      # 2. Build the frontend assets HERE (so your server needs no Node)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run build
+
+      # 3. SSH into the right server and run the deploy commands
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}
+            git pull origin ${{ github.ref_name }}
+            composer install --no-dev --optimize-autoloader --no-interaction
+            php artisan migrate --force
+            php artisan optimize:clear
+            php artisan optimize

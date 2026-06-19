@@ -61,13 +61,27 @@
                 <a href="#faq" class="hover:text-white">FAQ</a>
             </div>
             <div class="flex items-center gap-3">
-                {{-- Theme toggle (uses the global Alpine "theme" store from app.js) --}}
-                <button type="button" x-on:click="$store.theme.toggle()" :title="$store.theme.dark ? 'Light' : 'Dark'"
+                {{-- Theme toggle. Self-contained so it never depends on the global
+                     Alpine store's registration order: it reads the real <html>
+                     class and writes the class + cookie + localStorage directly. --}}
+                <button type="button"
+                        x-data="{
+                            dark: document.documentElement.classList.contains('dark'),
+                            toggle() {
+                                this.dark = !this.dark;
+                                document.documentElement.classList.toggle('dark', this.dark);
+                                var v = this.dark ? 'dark' : 'light';
+                                try { localStorage.setItem('theme', v); } catch (e) {}
+                                document.cookie = 'theme=' + v + ';path=/;max-age=31536000;samesite=lax';
+                                if (window.Alpine && Alpine.store('theme')) { Alpine.store('theme').dark = this.dark; }
+                            }
+                        }"
+                        x-on:click="toggle()" :title="dark ? 'Light' : 'Dark'"
                         class="rounded-md p-2 text-white/80 ring-1 ring-white/25 hover:bg-white/10 hover:text-white">
                     {{-- moon (shown in light mode) --}}
-                    <svg x-show="!$store.theme.dark" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
+                    <svg x-show="!dark" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
                     {{-- sun (shown in dark mode) --}}
-                    <svg x-show="$store.theme.dark" x-cloak class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>
+                    <svg x-show="dark" x-cloak class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>
                 </button>
                 <a href="{{ route('login') }}" class="rounded-md bg-white px-4 py-2 text-sm font-semibold text-indigo-700 shadow-sm hover:bg-gray-100">Open the generator</a>
             </div>
@@ -99,9 +113,11 @@
                     <a href="#how" class="rounded-md px-5 py-3 text-sm font-semibold text-white ring-1 ring-white/40 hover:bg-white/10">{{ LandingContent::get('landing_hero_secondary_label') }}</a>
                 </div>
                 <div class="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/75">
-                    <span>✓ No sign-up to try</span>
-                    <span>✓ Runs in your browser</span>
-                    <span>✓ IEEE &amp; APA built in</span>
+                    @foreach (['landing_hero_badge_1', 'landing_hero_badge_2', 'landing_hero_badge_3'] as $badgeKey)
+                        @if ($badge = LandingContent::getRaw($badgeKey))
+                            <span>✓ {{ $badge }}</span>
+                        @endif
+                    @endforeach
                 </div>
             </div>
 

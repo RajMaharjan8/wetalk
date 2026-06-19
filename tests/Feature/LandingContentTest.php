@@ -2,6 +2,7 @@
 
 use App\Models\LandingFeature;
 use App\Models\Report;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -85,6 +86,23 @@ it('saves dynamic landing content and renders it on the page', function () {
         ->assertSee('© '.now()->year.' Custom Co');
 });
 
+it('saves dynamic hero trust badges and hides blank ones', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    Livewire::actingAs($admin)->test('pages::admin.landing')
+        ->set('content.landing_hero_badge_1', 'Custom badge one')
+        ->set('content.landing_hero_badge_2', '') // blank — should be hidden
+        ->set('content.landing_hero_badge_3', 'Custom badge three')
+        ->call('saveContent')
+        ->assertHasNoErrors();
+
+    auth()->logout();
+    $this->get('/')
+        ->assertSee('Custom badge one')
+        ->assertSee('Custom badge three')
+        ->assertDontSee('Runs in your browser'); // the default for badge 2 is gone
+});
+
 it('saves a dynamic site name and renders it next to the logo', function () {
     $admin = User::factory()->create(['is_admin' => true]);
 
@@ -106,7 +124,7 @@ it('stores an uploaded logo and renders it across the brand spots', function () 
         ->call('saveContent')
         ->assertHasNoErrors();
 
-    $path = \App\Models\Setting::get('landing_logo');
+    $path = Setting::get('landing_logo');
     expect($path)->not->toBeNull();
     Storage::disk('public')->assertExists($path);
 
@@ -126,7 +144,7 @@ it('removes the uploaded logo and falls back to the RG badge', function () {
         ->call('removeLogo')
         ->assertHasNoErrors();
 
-    expect(\App\Models\Setting::get('landing_logo'))->toBeNull();
+    expect(Setting::get('landing_logo'))->toBeNull();
 
     auth()->logout();
     $this->get('/')->assertSee('>RG</span>', false); // fallback badge back

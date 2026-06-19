@@ -37,6 +37,9 @@ class LandingContent
             'landing_hero_subtitle' => 'Stop losing marks to broken margins, mismatched page numbers and inconsistent references. Build your college project report chapter by chapter, cite a source, and export a submission-ready PDF in IEEE or APA — title page, table of contents and references built automatically.',
             'landing_hero_primary_label' => 'Start your report — free',
             'landing_hero_secondary_label' => 'See how it works',
+            'landing_hero_badge_1' => 'No sign-up to try',
+            'landing_hero_badge_2' => 'Runs in your browser',
+            'landing_hero_badge_3' => 'IEEE & APA built in',
 
             // Section headings
             'landing_features_eyebrow' => 'Everything formatted for you',
@@ -73,6 +76,20 @@ class LandingContent
     public static function get(string $key): string
     {
         return (string) Setting::get($key, self::defaults()[$key] ?? '');
+    }
+
+    /**
+     * Read a landing field's stored value as-is, with NO fallback to the default
+     * once it has ever been saved. Used for optional, hideable fields (e.g. the
+     * hero trust badges) where an admin clearing the box must hide the item
+     * rather than silently re-show the default.
+     */
+    public static function getRaw(string $key): string
+    {
+        $map = Setting::map();
+
+        // Key never stored → use the default; stored (even as "") → honour it.
+        return (string) ($map[$key] ?? self::defaults()[$key] ?? '');
     }
 
     /**
