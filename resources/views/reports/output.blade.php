@@ -41,6 +41,10 @@
         ];
         window.reportPageAlign = @json($align);
         window.reportPageMargins = @json($margins);
+        /* When the owner is viewing (not a sample), report.js adds a hover
+           "Edit this page" button to each rendered page, linking into edit mode
+           anchored to that page's block. */
+        window.reportEditUrl = @json($canEdit ? route('reports.output', ['report' => $report, 'edit' => 1]) : null);
         /* The roman numeral printed on the first front page. TU reports number
            their declaration page "i" (the cover is unnumbered and uncounted);
            every other format keeps the cover as page i and starts front matter
@@ -100,6 +104,22 @@
 
         /* Outline each rendered page so it reads as a sheet on the white background */
         #report-render .pagedjs_page { box-shadow: 0 0 0 1px #e5e7eb; }
+
+        /* Hover "Edit this page" button on each rendered page (owner, screen only). */
+        .page-edit-btn {
+            position: absolute; top: 10px; right: 10px; z-index: 5;
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 10px; border-radius: 7px;
+            background: #4f46e5; color: #fff; text-decoration: none;
+            font-family: system-ui, -apple-system, sans-serif; font-size: 12px; font-weight: 600;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+            opacity: 0; transform: translateY(-3px); pointer-events: none;
+            transition: opacity .15s ease, transform .15s ease;
+        }
+        .pagedjs_pagebox:hover .page-edit-btn,
+        .pagedjs_page:hover .page-edit-btn { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        .page-edit-btn:hover { background: #6366f1; }
+        @media print { .page-edit-btn { display: none !important; } }
         /* Center the sheets in the available width instead of hugging the left. */
         #report-render .pagedjs_pages { display: flex; flex-direction: column; align-items: center; }
         #report-render .pagedjs_page { margin-left: auto; margin-right: auto; }
@@ -214,9 +234,31 @@
 
         @media print {
             body { background: #fff; padding-top: 0; }
-            .report-toolbar, .report-loading { display: none !important; }
+            .report-toolbar, .report-loading, .cover-edit-hint { display: none !important; }
             #report-render { padding: 0; zoom: 1 !important; }
         }
+
+        /* ---- "You can edit the cover" hint banner (owner, screen only) ---- */
+        .cover-edit-hint { background: #eef2ff; border-bottom: 1px solid #e0e7ff; }
+        .cover-edit-hint-inner {
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+            max-width: 960px; margin: 0 auto; padding: 9px 16px;
+            font-size: 13px; color: #3730a3;
+        }
+        .cover-edit-hint-icon { width: 16px; height: 16px; flex-shrink: 0; }
+        .cover-edit-hint-inner span { flex: 1; min-width: 180px; }
+        .cover-edit-hint-btn {
+            flex-shrink: 0; background: #4f46e5; color: #fff !important; text-decoration: none;
+            font-weight: 600; font-size: 12px; padding: 5px 12px; border-radius: 6px;
+        }
+        .cover-edit-hint-btn:hover { background: #6366f1; }
+        .cover-edit-hint-close {
+            flex-shrink: 0; background: transparent; border: 0; cursor: pointer;
+            color: #6366f1; padding: 4px; line-height: 0;
+        }
+        .cover-edit-hint-close:hover { color: #3730a3; }
+        .dark .cover-edit-hint { background: #1e1b4b; border-bottom-color: #312e81; }
+        .dark .cover-edit-hint-inner { color: #c7d2fe; }
 
         /* ---- Edit pages mode ---- */
         .edit-toolbar {
@@ -266,6 +308,12 @@
         .ec-edit:hover { text-decoration: underline; }
         .edit-section-body { padding: 16px 20px; min-height: 80px; font-family: "Times New Roman", Times, serif; color: #111; }
         .edit-section-body:focus { outline: 2px solid #6366f1; outline-offset: -2px; }
+        /* Brief highlight when arriving from a "Edit this page" button. */
+        .edit-target-flash { animation: edit-target-flash 1.6s ease-out; }
+        @keyframes edit-target-flash {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
+            15% { box-shadow: 0 0 0 4px rgba(99,102,241,0.45); }
+        }
         .edit-sections-empty { padding: 14px; font-size: 14px; color: #6b7280; }
     </style>
 </head>
@@ -307,7 +355,7 @@
         </div>
 
         @forelse ($report->sections as $section)
-            <div class="edit-section-card">
+            <div class="edit-section-card" id="edit-target-{{ $section->placement === 'front' ? 'front' : ($section->placement === 'back' ? 'back' : 'sec') }}-{{ $section->id }}">
                 <div class="edit-section-head">
                     <span class="ec-label">
                         @if ($section->placement === 'front')
@@ -349,6 +397,21 @@
             document.querySelectorAll('.edit-section-body figure, .edit-section-body figcaption, .edit-section-body table, .edit-section-body img').forEach(function (el) {
                 el.setAttribute('contenteditable', 'false');
             });
+
+            // When opened from a "Edit this page" button (URL has #edit-target-…),
+            // scroll to that block and briefly highlight it so it's obvious.
+            if (location.hash && location.hash.indexOf('#edit-target') === 0) {
+                var target = document.getElementById(location.hash.slice(1));
+                if (target) {
+                    setTimeout(function () {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        target.classList.add('edit-target-flash');
+                        setTimeout(function () { target.classList.remove('edit-target-flash'); }, 1600);
+                        var editable = target.matches('[contenteditable]') ? target : target.querySelector('[contenteditable]');
+                        if (editable) { editable.focus(); }
+                    }, 120);
+                }
+            }
         });
 
         function saveEdits() {
@@ -386,6 +449,23 @@
             @endif
         </div>
     </div>
+
+    @if ($canEdit)
+        {{-- Owner hint: the cover and front/back pages are editable in place.
+             Dismissible, screen-only (hidden on print), remembered per browser. --}}
+        <div class="cover-edit-hint"
+             x-data="{ show: localStorage.getItem('coverHintDismissed') !== '1' }"
+             x-show="show" x-cloak x-transition>
+            <div class="cover-edit-hint-inner">
+                <svg class="cover-edit-hint-icon" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zM19.5 7.125L16.875 4.5" /></svg>
+                <span>Want to change the cover or any page? Click <strong>Edit pages</strong> to edit the text in place.</span>
+                <a href="{{ route('reports.output', ['report' => $report, 'edit' => 1]) }}" class="cover-edit-hint-btn">Edit pages</a>
+                <button type="button" class="cover-edit-hint-close" x-on:click="show = false; localStorage.setItem('coverHintDismissed', '1')" aria-label="Dismiss">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+        </div>
+    @endif
 
     @if (session('payment-success'))
         <div class="report-flash report-flash-success">{{ session('payment-success') }}</div>
@@ -488,7 +568,7 @@
                 <ul class="toc">
                     @forelse ($compiler->contents() as $entry)
                         <li class="toc-entry toc-level-{{ $entry['level'] }}">
-                            <a href="#{{ $entry['id'] }}"><span class="toc-label">{{ $entry['marker'] }}&nbsp; {{ $entry['label'] }}</span></a>
+                            <a href="#{{ $entry['id'] }}"><span class="toc-label">@if ($entry['marker'] !== ''){{ $entry['marker'] }}&nbsp; @endif{{ $entry['label'] }}</span></a>
                         </li>
                     @empty
                         <li class="toc-empty">No sections yet &mdash; add sections in the editor.</li>
@@ -549,6 +629,20 @@
                     <p>No sections yet. Add sections in the editor to build the report.</p>
                 </section>
             @endforelse
+
+            {{-- Back matter (References, Appendix …): after the body, unnumbered. --}}
+            @foreach ($compiler->backMatter() as $back)
+                <section class="report-bodymatter report-section report-backmatter page-break">
+                    <h1 class="section-title" id="{{ $back['id'] }}">{{ $back['title'] }}</h1>
+                    <div class="report-content">
+                        @if (trim($back['html']) !== '')
+                            {!! $back['html'] !!}
+                        @else
+                            <p>No content yet.</p>
+                        @endif
+                    </div>
+                </section>
+            @endforeach
         </div>
     </template>
 

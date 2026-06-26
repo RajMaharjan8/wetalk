@@ -22,6 +22,49 @@ function toRoman(value) {
     return result
 }
 
+/**
+ * Add a hover "Edit this page" button to each rendered page so the owner can
+ * jump straight into edit mode anchored to that page's block. No-op unless
+ * window.reportEditUrl is set (owner viewing, not a sample/print).
+ */
+function addEditButtons(container) {
+    const editUrl = window.reportEditUrl
+    if (!editUrl) {
+        return
+    }
+
+    container.querySelectorAll('.pagedjs_page').forEach((page) => {
+        const box = page.querySelector('.pagedjs_pagebox') || page
+
+        // Resolve which editable block this page maps to, so the link lands
+        // there in edit mode. Cover → cover; front matter → its data-block;
+        // body/back → the heading id (sec-/back-).
+        let anchor = ''
+        if (page.querySelector('.report-cover')) {
+            anchor = 'edit-target-cover'
+        } else {
+            const front = page.querySelector('.report-frontmatter[data-block]')
+            const heading = page.querySelector('.report-section [id^="sec-"], .report-section [id^="back-"], .report-backmatter [id]')
+            if (front) {
+                anchor = 'edit-target-block-' + front.getAttribute('data-block')
+            } else if (heading) {
+                anchor = 'edit-target-' + heading.id
+            }
+        }
+
+        const href = anchor ? editUrl + '#' + anchor : editUrl
+
+        const btn = document.createElement('a')
+        btn.className = 'page-edit-btn'
+        btn.href = href
+        btn.setAttribute('contenteditable', 'false')
+        btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg><span>Edit this page</span>'
+
+        box.style.position = box.style.position || 'relative'
+        box.appendChild(btn)
+    })
+}
+
 function numberPages(container, align, margins) {
     const pages = container.querySelectorAll('.pagedjs_page')
 
@@ -151,6 +194,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const previewer = new Previewer()
         await previewer.preview(source.innerHTML, stylesheets, target)
         numberPages(target, window.reportPageAlign || 'right', window.reportPageMargins)
+        addEditButtons(target)
         fitToWidth(target)
 
         let resizeTimer

@@ -28,8 +28,14 @@ class ReportCompiler
     /** @var list<array{title: string, id: string, html: string}> */
     protected array $frontMatter = [];
 
+    /** @var list<array{title: string, id: string, html: string}> Unnumbered back matter (References, Appendix) rendered after the body. */
+    protected array $backMatter = [];
+
     /** @var list<array{level: int, number: string, marker: string, label: string, id: string}> */
     protected array $contents = [];
+
+    /** @var list<array{level: int, number: string, marker: string, label: string, id: string}> ToC entries for back matter, appended after the body. */
+    protected array $backContents = [];
 
     /** @var list<array{number: int, label: string, caption: string, id: string, section: string}> */
     protected array $figures = [];
@@ -67,7 +73,15 @@ class ReportCompiler
     {
         $sectionIndex = 0;
 
-        foreach ($this->report->sections as $section) {
+        // Process back matter (References, Appendix) LAST regardless of each
+        // section's stored order, so every body citation has been counted before
+        // the references-list placeholder renders. Relative order within each
+        // group (sections are already sorted by `order`) is preserved.
+        $ordered = $this->report->sections
+            ->sortBy(fn (Section $s) => $s->placement === 'back' ? 1 : 0)
+            ->values();
+
+        foreach ($ordered as $section) {
             // Hidden sections keep their content but are excluded from the
             // compiled report — and skip the numbering so visible sections
             // renumber 1, 2, 3 … without gaps.
@@ -82,6 +96,31 @@ class ReportCompiler
                     'title' => (string) $section->title,
                     'id' => 'front-'.$section->id,
                     'html' => $this->processFrontPage($section),
+                ];
+
+                continue;
+            }
+
+            // Back matter (References, Appendix …) renders after the body. It is
+            // NOT numbered as a chapter — the heading is just the plain title —
+            // but it does appear in the Table of Contents (without a number).
+            if ($section->placement === 'back') {
+                $backAnchor = 'back-'.$section->id;
+
+                // Collected separately so back matter always lists after the
+                // numbered body sections in the Table of Contents.
+                $this->backContents[] = [
+                    'level' => 1,
+                    'number' => '',
+                    'marker' => '',
+                    'label' => (string) $section->title,
+                    'id' => $backAnchor,
+                ];
+
+                $this->backMatter[] = [
+                    'title' => (string) $section->title,
+                    'id' => $backAnchor,
+                    'html' => $this->processSection($section, 0),
                 ];
 
                 continue;
@@ -107,6 +146,9 @@ class ReportCompiler
                 'html' => $this->processSection($section, $sectionIndex),
             ];
         }
+
+        // Back matter is listed after every numbered body section in the ToC.
+        $this->contents = [...$this->contents, ...$this->backContents];
 
         return $this;
     }
@@ -137,6 +179,17 @@ class ReportCompiler
     public function hasFrontMatter(): bool
     {
         return $this->frontMatter !== [];
+    }
+
+    /** @return list<array{title: string, id: string, html: string}> */
+    public function backMatter(): array
+    {
+        return $this->backMatter;
+    }
+
+    public function hasBackMatter(): bool
+    {
+        return $this->backMatter !== [];
     }
 
     /** @return list<array{level: int, number: string, marker: string, label: string, id: string}> */

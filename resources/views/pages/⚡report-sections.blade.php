@@ -17,6 +17,8 @@ new class extends Component
 
     public string $newFrontPageTitle = '';
 
+    public string $newBackPageTitle = '';
+
     public string $editTitle = '';
 
     public function mount(Report $report): void
@@ -51,6 +53,14 @@ new class extends Component
     }
 
     /**
+     * Unnumbered back-matter pages (References, Appendix), shown after the body.
+     */
+    public function getBackPagesProperty()
+    {
+        return $this->report->sections()->where('placement', 'back')->orderBy('order')->get();
+    }
+
+    /**
      * The compiled report (front matter + numbered sections, citations and
      * figure/table numbers resolved) used to render the live preview pane.
      */
@@ -69,7 +79,13 @@ new class extends Component
             return null;
         }
 
-        return ($this->activeSection->isFrontPage() ? 'front-' : 'sec-').$this->activeSection->id;
+        $prefix = match (true) {
+            $this->activeSection->isFrontPage() => 'front-',
+            $this->activeSection->isBackPage() => 'back-',
+            default => 'sec-',
+        };
+
+        return $prefix.$this->activeSection->id;
     }
 
     /**
@@ -161,6 +177,13 @@ new class extends Component
     {
         if ($this->createPage($this->newFrontPageTitle, 'front')) {
             $this->newFrontPageTitle = '';
+        }
+    }
+
+    public function addBackPage(): void
+    {
+        if ($this->createPage($this->newBackPageTitle, 'back')) {
+            $this->newBackPageTitle = '';
         }
     }
 
@@ -351,8 +374,11 @@ new class extends Component
                     {{ __('Edit chapters') }}
                 </button>
                 <livewire:manage-references :report="$report" />
-                <a href="{{ route('reports.output', ['report' => $report]) }}" class="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500">
+                <a href="{{ route('reports.output', ['report' => $report]) }}"
+                   class="group view-report-cta relative inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm ring-1 ring-indigo-500/30 transition hover:bg-indigo-500 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                     {{ __('View full report') }}
+                    <svg class="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
                 </a>
                 <x-header-controls />
             </div>
@@ -382,16 +408,17 @@ new class extends Component
 
             {{-- Front-matter pages — shown after the cover, before the contents --}}
             <section>
-                <h3 class="px-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Front pages') }}</h3>
+                <h3 class="px-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Preliminary pages') }}</h3>
+                <p class="mt-0.5 px-1 text-[11px] text-gray-400 dark:text-gray-500">{{ __('Pages before the chapters (e.g. Acknowledgements, Abstract).') }}</p>
                 <ul wire:sort="reorder" class="mt-2 space-y-3">
                     @forelse ($this->frontPages as $section)
                         @include('reports.partials.section-card', ['section' => $section, 'isFront' => true, 'number' => null])
                     @empty
-                        <li class="rounded-lg bg-white px-3 py-3 text-center text-xs text-gray-400 ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">{{ __('No front pages yet') }}</li>
+                        <li class="rounded-lg bg-white px-3 py-3 text-center text-xs text-gray-400 ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">{{ __('No preliminary pages yet') }}</li>
                     @endforelse
                 </ul>
                 <form wire:submit="addFrontPage" class="mt-3 flex gap-1">
-                    <input type="text" wire:model="newFrontPageTitle" placeholder="{{ __('Add front page — e.g. Acknowledgements') }}" class="block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
+                    <input type="text" wire:model="newFrontPageTitle" placeholder="{{ __('Add a preliminary page — e.g. Acknowledgements') }}" class="block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
                     <button type="submit" class="shrink-0 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">{{ __('Add') }}</button>
                 </form>
             </section>
@@ -411,19 +438,40 @@ new class extends Component
                     <button type="submit" class="shrink-0 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">{{ __('Add') }}</button>
                 </form>
             </section>
+
+            <section class="mt-5">
+                <h3 class="px-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('End pages') }}</h3>
+                <p class="mt-0.5 px-1 text-[11px] text-gray-400 dark:text-gray-500">{{ __('Unnumbered pages after the chapters (References, Appendix).') }}</p>
+                <ul class="mt-2 space-y-3">
+                    @forelse ($this->backPages as $section)
+                        @include('reports.partials.section-card', ['section' => $section, 'isFront' => false, 'number' => null])
+                    @empty
+                        <li class="rounded-lg bg-white px-3 py-3 text-center text-xs text-gray-400 ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">{{ __('No end pages yet') }}</li>
+                    @endforelse
+                </ul>
+                <form wire:submit="addBackPage" class="mt-3 flex gap-1">
+                    <input type="text" wire:model="newBackPageTitle" placeholder="{{ __('Add an end page — e.g. Appendix 1') }}" class="block w-full rounded-md px-2 py-1.5 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-600">
+                    <button type="submit" class="shrink-0 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">{{ __('Add') }}</button>
+                </form>
+            </section>
         </aside>
 
         {{-- RIGHT: live preview of the compiled report --}}
         <main x-ref="preview" @scroll="onScroll()" class="min-w-0 min-h-0 flex-1 overflow-y-auto bg-gray-200/70 dark:bg-gray-950">
-            @php($activeId = $this->activePreviewId)
+            @php
+                $activeId = $this->activePreviewId;
+                // Mirror the report's chosen heading alignment + case in the
+                // editor preview so it matches the full report exactly.
+                $headingStyle = 'text-align: '.$this->report->headingAlign().'; text-transform: '.($this->report->heading_uppercase ? 'uppercase' : 'none').';';
+            @endphp
             <div class="report-preview px-4 py-8 sm:px-8">
                 @forelse ($this->preview->frontMatter() as $page)
                     <section class="preview-page" wire:key="preview-{{ $page['id'] }}" data-page-key="{{ $page['id'] }}">
                         @if ($page['id'] === $activeId)
-                            <h2 class="preview-heading" x-text="$store.preview.title || @js($page['title'])"></h2>
+                            <h2 class="preview-heading" style="{{ $headingStyle }}" x-text="$store.preview.title || @js($page['title'])"></h2>
                             <div class="report-content" x-html="$store.preview.html"></div>
                         @else
-                            <h2 class="preview-heading">{{ $page['title'] }}</h2>
+                            <h2 class="preview-heading" style="{{ $headingStyle }}">{{ $page['title'] }}</h2>
                             <div class="report-content">{!! $page['html'] !!}</div>
                         @endif
                     </section>
@@ -433,10 +481,10 @@ new class extends Component
                 @forelse ($this->preview->sections() as $sec)
                     <section class="preview-page" wire:key="preview-{{ $sec['id'] }}" data-page-key="{{ $sec['id'] }}">
                         @if ($sec['id'] === $activeId)
-                            <h2 class="preview-heading">{{ $sec['marker'] }} <span x-text="$store.preview.title || @js($sec['title'])"></span></h2>
+                            <h2 class="preview-heading" style="{{ $headingStyle }}">{{ $sec['marker'] }} <span x-text="$store.preview.title || @js($sec['title'])"></span></h2>
                             <div class="report-content" x-html="$store.preview.html"></div>
                         @else
-                            <h2 class="preview-heading">{{ $sec['marker'] }} {{ $sec['title'] }}</h2>
+                            <h2 class="preview-heading" style="{{ $headingStyle }}">{{ $sec['marker'] }} {{ $sec['title'] }}</h2>
                             <div class="report-content">{!! $sec['html'] !!}</div>
                         @endif
                     </section>
@@ -447,6 +495,18 @@ new class extends Component
                         </div>
                     @endunless
                 @endforelse
+
+                @foreach ($this->preview->backMatter() as $back)
+                    <section class="preview-page" wire:key="preview-{{ $back['id'] }}" data-page-key="{{ $back['id'] }}">
+                        @if ($back['id'] === $activeId)
+                            <h2 class="preview-heading" style="{{ $headingStyle }}" x-text="$store.preview.title || @js($back['title'])"></h2>
+                            <div class="report-content" x-html="$store.preview.html"></div>
+                        @else
+                            <h2 class="preview-heading" style="{{ $headingStyle }}">{{ $back['title'] }}</h2>
+                            <div class="report-content">{!! $back['html'] !!}</div>
+                        @endif
+                    </section>
+                @endforeach
             </div>
         </main>
     </div>

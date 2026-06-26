@@ -24,7 +24,7 @@ new class extends Component
 
     public function getReportLimitProperty(): int
     {
-        return User::MAX_REPORTS;
+        return User::reportLimit();
     }
 
     public function getCanCreateMoreProperty(): bool
@@ -67,9 +67,11 @@ new class extends Component
                 <a href="{{ route('cover.templates') }}" wire:navigate class="inline-flex shrink-0 items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-100 dark:ring-gray-600 dark:hover:bg-gray-700">
                     {{ __('Cover Designer') }}
                 </a>
+                @if (\App\Support\FeatureSettings::checkReportEnabled())
                 <a href="{{ route('reports.check') }}" wire:navigate class="inline-flex shrink-0 items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-100 dark:ring-gray-600 dark:hover:bg-gray-700">
                     {{ __('Check My Report') }}
                 </a>
+                @endif
                 @if ($this->canCreateMore)
                     <a href="{{ route('reports.create') }}" wire:navigate class="inline-flex shrink-0 items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
                         {{ __('+ New report') }}

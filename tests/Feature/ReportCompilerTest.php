@@ -142,3 +142,59 @@ it('does not double a label already baked into the caption', function () {
 
     expect($labels)->toBe(['Figure 1: Alpha', 'Figure 2: Beta']);
 });
+
+it('renders back matter unnumbered and lists it last in the contents', function () {
+    $report = makeReport();
+    // Created out of order to prove ToC ordering, not creation order.
+    $report->sections()->create(['placement' => 'back', 'order' => 0, 'title' => 'References', 'content' => '<p>refs.</p>']);
+    $report->sections()->create(['placement' => 'body', 'order' => 1, 'title' => 'Introduction', 'content' => '<p>intro.</p>']);
+    $report->sections()->create(['placement' => 'back', 'order' => 2, 'title' => 'Appendix', 'content' => '<p>appendix.</p>']);
+    $report->sections()->create(['placement' => 'body', 'order' => 3, 'title' => 'Discussion', 'content' => '<p>disc.</p>']);
+
+    $compiler = ReportCompiler::for($report->load('sections'));
+
+    // Back matter is its own collection, unnumbered.
+    expect(array_column($compiler->backMatter(), 'title'))->toBe(['References', 'Appendix']);
+
+    // Table of contents: numbered body sections first, then back matter last.
+    $labels = array_column($compiler->contents(), 'label');
+    expect($labels)->toBe(['Introduction', 'Discussion', 'References', 'Appendix']);
+
+    // Body sections renumber 1, 2 (back matter takes no number).
+    $markers = array_column($compiler->contents(), 'marker');
+    expect($markers[0])->toBe('1.')
+        ->and($markers[1])->toBe('2.')
+        ->and($markers[2])->toBe('')
+        ->and($markers[3])->toBe('');
+});
+
+it('renders cited references in the list even when the References page sorts before the body', function () {
+    $report = makeReport();
+
+    $reference = $report->references()->create([
+        'key' => 'smith2021',
+        'type' => 'journal',
+        'data' => ['authors' => 'Smith, J.', 'year' => '2021', 'title' => 'A study', 'journal' => 'Journal', 'volume' => '1', 'issue' => '2', 'pages' => '3-4'],
+    ]);
+
+    // References page deliberately created with a LOWER order than the body that
+    // cites it — the bug that showed "No references cited yet".
+    $report->sections()->create([
+        'placement' => 'back',
+        'order' => 0,
+        'title' => 'References',
+        'content' => '<div class="references-list-placeholder" data-references-list contenteditable="false">x</div>',
+    ]);
+    $report->sections()->create([
+        'placement' => 'body',
+        'order' => 1,
+        'title' => 'Introduction',
+        'content' => '<p>As shown <span class="ref-cite" data-ref-id="'.$reference->id.'">(Smith, 2021)</span>.</p>',
+    ]);
+
+    $compiler = ReportCompiler::for($report->load(['sections', 'references']));
+    $refsHtml = collect($compiler->backMatter())->firstWhere('title', 'References')['html'];
+
+    expect($refsHtml)->toContain('Smith')
+        ->and($refsHtml)->not->toContain('No references cited yet');
+});

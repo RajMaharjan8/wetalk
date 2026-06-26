@@ -56,8 +56,14 @@ class SampleReportSeeder extends Seeder
 
             $order = 0;
             foreach ($sample['sections'] as [$sectionTitle, $html]) {
+                // References / Appendix are unnumbered back matter (rendered
+                // after the numbered chapters); everything else is a body chapter.
+                $placement = in_array($sectionTitle, ['References', 'Bibliography', 'Appendix'], true)
+                    ? 'back'
+                    : 'body';
+
                 $report->sections()->create([
-                    'placement' => 'body',
+                    'placement' => $placement,
                     'order' => $order++,
                     'title' => $sectionTitle,
                     'content' => $html,
@@ -150,7 +156,10 @@ class SampleReportSeeder extends Seeder
                 ['System Design', "<p>The system is built around {$modules}. A relational database stores the core entities, and the application layer enforces validation and business rules. Use-case and entity-relationship diagrams were prepared during analysis to model the interactions and data.</p><h2>Methodology</h2><p>An iterative approach was used: each module was designed, implemented, and tested before integration, allowing issues to be caught early.</p>"],
                 ['Testing & Results', '<p>Each module was tested with unit and integration tests, and the complete system was validated against the original requirements. The results confirm that the system performs its intended functions reliably under normal use.</p>'],
                 ['Conclusion', "<p>The project successfully delivers {$about}. It meets the stated objectives and provides a foundation for future enhancements such as analytics, notifications, and mobile access.</p>"],
-                ['References', "<p>Pressman, R. S. (2014) <em>Software Engineering: A Practitioner's Approach</em>. 8th edn. New York: McGraw-Hill.</p><p>Sommerville, I. (2016) <em>Software Engineering</em>. 10th edn. Harlow: Pearson.</p>"],
+                // References page uses the auto-generated references list (lists
+                // only the sources actually cited in the body) rather than
+                // hardcoded entries — and renders as unnumbered back matter.
+                ['References', '<div class="references-list-placeholder" data-references-list contenteditable="false">References list (auto-generated — shows the references you actually cite)</div>'],
             ],
         ];
     }

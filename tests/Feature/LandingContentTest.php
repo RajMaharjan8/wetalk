@@ -86,6 +86,37 @@ it('saves dynamic landing content and renders it on the page', function () {
         ->assertSee('© '.now()->year.' Custom Co');
 });
 
+it('renders the How it works steps from the database', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    Livewire::actingAs($admin)->test('pages::admin.landing')
+        ->set('newSection', 'steps')
+        ->set('newTitle', 'My custom step')
+        ->set('newDescription', 'Do this first.')
+        ->call('addCard')
+        ->assertHasNoErrors();
+
+    auth()->logout();
+    $this->get('/')
+        ->assertSee('My custom step')
+        ->assertSee('Do this first.');
+});
+
+it('saves dynamic How it works and FAQ headings', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    Livewire::actingAs($admin)->test('pages::admin.landing')
+        ->set('content.landing_steps_heading', 'My steps heading')
+        ->set('content.landing_faqs_heading', 'My FAQ heading')
+        ->call('saveContent')
+        ->assertHasNoErrors();
+
+    auth()->logout();
+    $this->get('/')
+        ->assertSee('My steps heading')
+        ->assertSee('My FAQ heading');
+});
+
 it('saves dynamic hero trust badges and hides blank ones', function () {
     $admin = User::factory()->create(['is_admin' => true]);
 

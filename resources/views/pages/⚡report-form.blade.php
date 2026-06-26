@@ -136,7 +136,7 @@ new class extends Component
      */
     protected function redirectToReportLimitNotice()
     {
-        session()->flash('report-limit', __('You already have :count of :max reports. Adding more students to a group project is fine and never counts against this — but to start a brand-new report, delete one of your existing reports first.', ['count' => Auth::user()->reports()->count(), 'max' => User::MAX_REPORTS]));
+        session()->flash('report-limit', __('You already have :count of :max reports. Adding more students to a group project is fine and never counts against this — but to start a brand-new report, delete one of your existing reports first.', ['count' => Auth::user()->reports()->count(), 'max' => User::reportLimit()]));
 
         return $this->redirectRoute('reports.index', navigate: true);
     }
@@ -317,24 +317,23 @@ new class extends Component
     {
         $this->fillSampleFields();
 
-        // The section/reference demo can only attach to a standard, saved
-        // report. Custom covers and the report cap fall back to field-fill only.
-        if (! in_array($this->cover_format, ['tu', 'london_met'], true)) {
-            return null;
-        }
-
         if ($this->report === null) {
             if (Auth::user()->hasReachedReportLimit()) {
                 return $this->redirectToReportLimitNotice();
             }
 
+            // Validate + create the report for ANY format (TU, London Met, or
+            // custom). For custom this requires a cover to be selected — the
+            // coverRules() handle that and surface a validation error if not.
             $this->syncPrimaryStudentFromGroup();
             $this->report = $this->persist($this->normalizeDates($this->validate($this->coverRules())));
         }
 
+        // Once the report exists (any format — TU, London Met or custom), add
+        // the demo sections + a cited reference.
         $this->seedDemoContent();
 
-        session()->flash('demo-added', __('Demo report ready — example cover, an acknowledgement, two sample sections, and a References section with a cited reference were added.'));
+        session()->flash('demo-added', __('Demo report ready — example cover, an acknowledgement, and two sample sections with a cited reference were added. The cited source appears in your References page automatically.'));
 
         return null;
     }
@@ -456,13 +455,10 @@ new class extends Component
                 .'<p>Overall, the evidence points to a coherent and well-supported conclusion.</p>',
         ]);
 
-        // References always live in their own section, placed last.
-        $report->sections()->create([
-            'placement' => 'body',
-            'title' => 'References',
-            'order' => 2,
-            'content' => '<div class="references-list-placeholder" data-references-list contenteditable="false">References list (auto-generated — shows the references you actually cite)</div>',
-        ]);
+        // No References section is created here — every report already has the
+        // dedicated back-matter "References" page (auto-generated list). If a
+        // demo runs before that exists, ensure it does.
+        $this->seedBackMatter($report);
     }
 
     /**
@@ -497,15 +493,36 @@ new class extends Component
 
         // New TU reports follow the IEEE numbered citation style (the Nepali
         // university convention); London Met reports use the Harvard variant.
+        // New TU reports also reserve the binding (left) margin and use TU's
+        // "CHAPTER 1: INTRODUCTION" heading style (label + uppercase).
         if ($this->report === null) {
             $data['reference_format'] = $this->cover_format === 'tu' ? 'ieee' : 'london_met';
+
+            if ($this->cover_format === 'tu') {
+                $data['margin_left'] = Report::TU_BINDING_MARGIN_LEFT;
+                $data['section_label'] = 'CHAPTER';
+                $data['heading_uppercase'] = true;
+            }
         }
+
+        $isNew = $this->report === null;
 
         $report = $this->report
             ? tap($this->report)->update($data)
             : Auth::user()->reports()->create($data);
 
         $saved = $this->report ?? $report;
+
+        if ($isNew) {
+            // TU reports get the full numbered chapter scaffold (Introduction …
+            // Conclusion). Every report type — TU, London Met, custom — gets the
+            // References + Appendix back matter so the structure is complete.
+            if ($this->cover_format === 'tu') {
+                $this->seedTuChapters($saved);
+            }
+
+            $this->seedBackMatter($saved);
+        }
 
         if ($this->cover_format === 'custom' && $coverId) {
             $template = \App\Models\CoverTemplate::where('user_id', Auth::id())->find($coverId);
@@ -518,6 +535,75 @@ new class extends Component
         }
 
         return $saved;
+    }
+
+    /**
+     * Create the default numbered chapter sections (placement "body" →
+     * "CHAPTER 1: …") on a freshly-created TU report. Skipped if the report
+     * already has body sections.
+     */
+    protected function seedTuChapters(Report $report): void
+    {
+        if ($report->sections()->where('placement', 'body')->exists()) {
+            return;
+        }
+
+        $chapters = [
+            ['Introduction', '<p>Introduce the project: its background, problem statement, objectives and scope.</p>'],
+            ['Literature Review', '<p>Review existing systems and related work that informed this project.</p>'],
+            ['System Analysis and Design', '<p>Describe the requirements, methodology and the system design (diagrams, database, architecture).</p>'],
+            ['Implementation and Testing', '<p>Explain how the system was built and how each part was tested.</p>'],
+            ['Conclusion and Future Work', '<p>Summarise the outcomes against the objectives and outline future enhancements.</p>'],
+        ];
+
+        $order = ($report->sections()->max('order') ?? -1) + 1;
+
+        foreach ($chapters as [$title, $content]) {
+            $report->sections()->create([
+                'placement' => 'body',
+                'title' => $title,
+                'content' => $content,
+                'order' => $order++,
+            ]);
+        }
+    }
+
+    /**
+     * Create the References + Appendix back-matter pages (placement "back" →
+     * unnumbered, after the body) on a freshly-created report of ANY format.
+     * The user can delete either if they don't need it. Skipped if back matter
+     * already exists.
+     */
+    protected function seedBackMatter(Report $report): void
+    {
+        // The References page carries the auto-generated references list
+        // (renders the sources actually cited via [[key]]); the user doesn't
+        // type entries by hand.
+        $referencesList = '<div class="references-list-placeholder" data-references-list contenteditable="false">References list (auto-generated — shows the references you actually cite)</div>';
+
+        $backMatter = [
+            ['References', $referencesList],
+            ['Appendix', '<p>Add any supporting material (code listings, diagrams, survey forms) here.</p>'],
+        ];
+
+        // Don't recreate a page the report already has under any placement
+        // (e.g. a pre-existing "References" body section).
+        $existing = $report->sections()->pluck('title')->map(fn ($t) => strtolower(trim((string) $t)))->all();
+
+        $order = ($report->sections()->max('order') ?? -1) + 1;
+
+        foreach ($backMatter as [$title, $content]) {
+            if (in_array(strtolower($title), $existing, true)) {
+                continue;
+            }
+
+            $report->sections()->create([
+                'placement' => 'back',
+                'title' => $title,
+                'content' => $content,
+                'order' => $order++,
+            ]);
+        }
     }
 
     public function save()

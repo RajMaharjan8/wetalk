@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Middleware\SetLocale;
 use App\Models\CoverTemplate;
+use App\Models\CustomPage;
 use App\Models\Payment;
 use App\Models\Report;
 use App\Support\Payments\PaymentSettings;
@@ -53,9 +54,14 @@ Route::get('/samples/{report:slug}', function (Report $report) {
 // Guest auth: email/password sign-in & registration (with email OTP) alongside
 // Google. Already-authenticated users are bounced to the app by each component.
 Route::livewire('/login', 'pages::auth.login')->name('login');
-Route::livewire('/register', 'pages::auth.register')->name('register');
-Route::livewire('/verify-otp', 'pages::auth.verify-otp')->name('verify-otp');
-Route::livewire('/forgot-password', 'pages::auth.forgot-password')->name('forgot-password');
+
+// Email/password-only flows — redirected to /login when the admin has switched
+// the app to Google-only sign-in (see EnsureEmailAuthEnabled).
+Route::middleware('email-auth')->group(function () {
+    Route::livewire('/register', 'pages::auth.register')->name('register');
+    Route::livewire('/verify-otp', 'pages::auth.verify-otp')->name('verify-otp');
+    Route::livewire('/forgot-password', 'pages::auth.forgot-password')->name('forgot-password');
+});
 
 Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])->name('auth.google.redirect');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
@@ -66,20 +72,29 @@ Route::post('/logout', [GoogleAuthController::class, 'logout'])->name('logout');
 Route::livewire('/admin/login', 'pages::admin.login')->name('admin.login');
 
 Route::middleware(['auth', 'admin'])->group(function () {
+    // The dashboard is the admin landing — open to any admin-area user. Its
+    // settings actions are permission-checked inside the component.
     Route::livewire('/admin', 'pages::admin.dashboard')->name('admin.dashboard');
-    Route::livewire('/admin/users', 'pages::admin.users')->name('admin.users');
-    Route::livewire('/admin/feedback', 'pages::admin.feedback')->name('admin.feedback');
-    Route::livewire('/admin/landing', 'pages::admin.landing')->name('admin.landing');
-    Route::livewire('/admin/transactions', 'pages::admin.transactions')->name('admin.transactions');
-    Route::livewire('/admin/mail', 'pages::admin.mail')->name('admin.mail');
-    Route::livewire('/admin/payments', 'pages::admin.payments')->name('admin.payments');
+
+    // Each section is gated by its own permission (super-admins bypass via Gate::before).
+    Route::livewire('/admin/users', 'pages::admin.users')->name('admin.users')->can('users.manage');
+    Route::livewire('/admin/roles', 'pages::admin.roles')->name('admin.roles')->can('roles.manage');
+    Route::livewire('/admin/feedback', 'pages::admin.feedback')->name('admin.feedback')->can('feedback.manage');
+    Route::livewire('/admin/landing', 'pages::admin.landing')->name('admin.landing')->can('landing.manage');
+    Route::livewire('/admin/transactions', 'pages::admin.transactions')->name('admin.transactions')->can('transactions.view');
+    Route::livewire('/admin/mail', 'pages::admin.mail')->name('admin.mail')->can('mail.manage');
+    Route::livewire('/admin/payments', 'pages::admin.payments')->name('admin.payments')->can('payments.manage');
+    Route::livewire('/admin/settings', 'pages::admin.settings')->name('admin.settings')->can('settings.manage');
+    Route::livewire('/admin/pages', 'pages::admin.pages')->name('admin.pages')->can('settings.manage');
+
+    // Personal — any admin-area user can change their own password.
     Route::livewire('/admin/password', 'pages::admin.password')->name('admin.password');
 });
 
 Route::middleware('auth')->group(function () {
     Route::livewire('/dashboard', 'pages::reports-index')->name('reports.index');
 
-    Route::livewire('/check', 'pages::report-check')->name('reports.check');
+    Route::livewire('/check', 'pages::report-check')->name('reports.check')->middleware('feature:check_report');
 
     Route::livewire('/reports/{report}/format-check', 'pages::report-live-check')
         ->name('reports.live-check')
@@ -263,3 +278,17 @@ Route::middleware('auth')->group(function () {
             ->with('cover-saved', 'Applied your custom cover “'.$template->name.'”.');
     })->name('reports.cover.use-template')->can('update', 'report');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Admin-built custom pages (Privacy Policy, Terms, …)
+|--------------------------------------------------------------------------
+| Root-level catch-all — MUST stay last so it only matches slugs no other
+| route claimed. Only published pages resolve; drafts and unknown slugs 404.
+| Reserved slugs can never be saved (see CustomPage::RESERVED_SLUGS).
+*/
+Route::get('/{slug}', function (string $slug) {
+    $page = CustomPage::published()->where('slug', $slug)->firstOrFail();
+
+    return view('pages.custom-page', ['page' => $page]);
+})->where('slug', '[a-z0-9-]+')->name('custom-page');

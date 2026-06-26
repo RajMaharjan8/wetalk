@@ -1,12 +1,19 @@
 @php
     $isActive = $activeSection?->is($section);
     $excerpt = \Illuminate\Support\Str::limit(trim(strip_tags(\App\Support\SectionContent::toHtml($section->content))), 200);
+    // Preview key prefix follows the section's real placement so card ↔ preview
+    // scroll-sync lines up (front-, back- or sec-).
+    $cardKeyPrefix = match (true) {
+        $section->isFrontPage() => 'front-',
+        $section->isBackPage() => 'back-',
+        default => 'sec-',
+    };
 @endphp
 
 <li
     wire:key="section-{{ $section->id }}"
     wire:sort:item="{{ $section->id }}"
-    data-card-key="{{ ($isFront ? 'front-' : 'sec-').$section->id }}"
+    data-card-key="{{ $cardKeyPrefix.$section->id }}"
     x-data="{ collapsed: false }"
     class="group overflow-hidden rounded-lg bg-white shadow-sm ring-1 transition-shadow {{ $isActive ? 'ring-indigo-300' : 'ring-gray-200' }} dark:bg-gray-800 {{ $isActive ? 'dark:ring-indigo-500' : 'dark:ring-gray-700' }}"
 >
@@ -18,8 +25,10 @@
             <svg class="h-4 w-4 transition-transform duration-200" :class="collapsed ? '-rotate-90' : ''" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
         </button>
 
-        @if ($isFront)
-            <span class="inline-flex h-6 shrink-0 items-center rounded-md bg-amber-50 px-2 text-[11px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" title="{{ __('Front-matter page — shown before the contents') }}">{{ __('Front page') }}</span>
+        @if ($section->isFrontPage())
+            <span class="inline-flex h-6 shrink-0 items-center rounded-md bg-amber-50 px-2 text-[11px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" title="{{ __('Preliminary page — shown before the chapters') }}">{{ __('Front') }}</span>
+        @elseif ($section->isBackPage())
+            <span class="inline-flex h-6 shrink-0 items-center rounded-md bg-slate-100 px-2 text-[11px] font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300" title="{{ __('End page — shown after the chapters, unnumbered') }}">{{ __('End') }}</span>
         @else
             <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300" title="{{ __('Section number') }}">{{ $number }}</span>
         @endif

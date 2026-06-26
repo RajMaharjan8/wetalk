@@ -45,6 +45,11 @@ class LandingContent
             'landing_features_eyebrow' => 'Everything formatted for you',
             'landing_features_heading' => 'The tedious parts of report writing, automated',
             'landing_features_subheading' => 'The six rules that usually eat your last weekend before submission — applied automatically, live, as you type.',
+            'landing_steps_eyebrow' => 'Three steps, one block',
+            'landing_steps_heading' => 'From blank page to bound report',
+            'landing_steps_subheading' => 'No setup, no template wrangling. The whole flow lives in a single, focused workspace.',
+            'landing_faqs_eyebrow' => 'Questions',
+            'landing_faqs_heading' => 'Frequently asked',
             'landing_formats_eyebrow' => 'Available formats',
             'landing_formats_heading' => "Built to your university's report format",
             'landing_formats_subheading' => "Start from a preset that matches your institution's project report guidelines — or build your own from scratch.",
@@ -56,9 +61,9 @@ class LandingContent
             // current year) and {company} (the company name, rendered as a link
             // to the company URL, opening in a new tab).
             'landing_footer_copyright' => '© :year {company} All rights reserved.',
-            'landing_footer_tagline' => 'A document tool for final-year project reports and documentation — academic structure, referencing and pagination, in IEEE or APA.',
+            'landing_footer_tagline' => '',
             'landing_footer_company_name' => config('app.name'),
-            'landing_footer_company_url' => 'https://laravel.com',
+            'landing_footer_company_url' => '#',
         ];
     }
 

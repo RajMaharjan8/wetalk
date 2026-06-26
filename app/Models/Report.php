@@ -14,6 +14,13 @@ class Report extends Model
     /** @use HasFactory<ReportFactory> */
     use HasFactory;
 
+    /**
+     * The binding (left) page margin in inches that TU-format reports must use.
+     * Applied automatically when a new TU report is created so the binding edge
+     * is reserved from the start, per the university's formatting rule.
+     */
+    public const TU_BINDING_MARGIN_LEFT = 1.5;
+
     protected static function booted(): void
     {
         static::deleting(function (Report $report) {

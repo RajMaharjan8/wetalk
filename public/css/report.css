@@ -71,6 +71,17 @@
     width: auto;
 }
 
+/* Institution names for the cover: kept in the PDF text layer so the format
+   checker can read them, but visually minimal (the logos do the branding). */
+.cover-institution-name {
+    display: block;
+    font-size: 1px;
+    line-height: 1px;
+    color: transparent;
+    height: 1px;
+    overflow: hidden;
+}
+
 .cover-block {
     margin-top: 11mm;
     font-weight: 700;

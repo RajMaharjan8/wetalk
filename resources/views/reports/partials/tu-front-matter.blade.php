@@ -66,7 +66,7 @@
 @endphp
 
 {{-- Page 1 — Student Declaration --}}
-<section class="report-frontmatter page-break tu-frontpage" data-block="declaration" @if ($editable) contenteditable="true" spellcheck="false" @endif>
+<section class="report-frontmatter page-break tu-frontpage" data-block="declaration" @if ($editable) id="edit-target-block-declaration" contenteditable="true" spellcheck="false" @endif>
     @if ($report->frontOverride('declaration'))
         {!! $report->frontOverride('declaration') !!}
     @else
@@ -100,7 +100,7 @@
 </section>
 
 {{-- Page 2 — Supervisor's Recommendation Letter --}}
-<section class="report-frontmatter page-break tu-frontpage" data-block="recommendation" @if ($editable) contenteditable="true" spellcheck="false" @endif>
+<section class="report-frontmatter page-break tu-frontpage" data-block="recommendation" @if ($editable) id="edit-target-block-recommendation" contenteditable="true" spellcheck="false" @endif>
     @if ($report->frontOverride('recommendation'))
         {!! $report->frontOverride('recommendation') !!}
     @else
@@ -127,7 +127,7 @@
 </section>
 
 {{-- Page 3 — Certificate of Approval --}}
-<section class="report-frontmatter page-break tu-frontpage" data-block="certificate" @if ($editable) contenteditable="true" spellcheck="false" @endif>
+<section class="report-frontmatter page-break tu-frontpage" data-block="certificate" @if ($editable) id="edit-target-block-certificate" contenteditable="true" spellcheck="false" @endif>
     @if ($report->frontOverride('certificate'))
         {!! $report->frontOverride('certificate') !!}
     @else
@@ -136,12 +136,12 @@
         <h2 class="tu-fm-heading">Certificate of Approval</h2>
 
         <p class="tu-fm-body">
-            This is to certify that the Project Work Report entitled <strong>&ldquo;{{ $title }}&rdquo;</strong>, prepared by
-            <strong>{{ $studentNames }}</strong> (TU Roll No./Batch: <strong>{{ $studentRolls }}</strong>), was carried out under the
-            guidance and supervision of <strong>{{ filled($report->tu_supervisor_name) ? $report->tu_supervisor_name : '[Supervisor Name]' }}</strong>.
-            This report represents the candidate&rsquo;s original work and has been completed in partial fulfillment of the
-            requirements for the degree of <strong>{{ $degree }}</strong>
-            at Tribhuvan University.
+            The undersigned certify that they have read and recommended to the {{ $institute }},
+            Tribhuvan University, the Project Work Report entitled <strong>&ldquo;{{ $title }}&rdquo;</strong>, prepared by
+            <strong>{{ $studentNames }}</strong> (TU Roll No./Batch: <strong>{{ $studentRolls }}</strong>), in partial
+            fulfillment of the requirements for the degree of <strong>{{ $degree }}</strong>. This report represents the
+            candidate&rsquo;s original work carried out under the guidance and supervision of
+            <strong>{{ filled($report->tu_supervisor_name) ? $report->tu_supervisor_name : '[Supervisor Name]' }}</strong>.
         </p>
 
         <div class="tu-fm-grid">
@@ -154,23 +154,72 @@
             </div>
             <div class="tu-fm-sign-block">
                 <p class="tu-fm-dots">&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;</p>
-                <p>Head/Coordinator Name</p>
-                <p>Head/Coordinator</p>
+                <p>Committee Chairperson</p>
                 <p>{{ $department }}</p>
                 <p>{{ $campus }}</p>
             </div>
             <div class="tu-fm-sign-block">
                 <p class="tu-fm-dots">&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;</p>
-                <p>Internal</p>
+                <p>Internal Examiner</p>
                 <p>{{ $institute }}</p>
                 <p>Tribhuvan University</p>
             </div>
             <div class="tu-fm-sign-block">
                 <p class="tu-fm-dots">&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;</p>
-                <p>External</p>
+                <p>External Examiner</p>
                 <p>{{ $institute }}</p>
                 <p>Tribhuvan University</p>
             </div>
         </div>
+    @endif
+</section>
+
+{{-- Page 4 — Copyright --}}
+<section class="report-frontmatter page-break tu-frontpage" data-block="copyright" @if ($editable) id="edit-target-block-copyright" contenteditable="true" spellcheck="false" @endif>
+    @if ($report->frontOverride('copyright'))
+        {!! $report->frontOverride('copyright') !!}
+    @else
+        @include('reports.partials.tu-fm-header')
+
+        <h2 class="tu-fm-heading">Copyright</h2>
+
+        <p class="tu-fm-body">
+            The author has agreed that the library, {{ $department }}, {{ $campus }}, Tribhuvan University,
+            may make this report freely available for inspection. Moreover, the author has agreed that permission
+            for extensive copying of this project work report for scholarly purposes may be granted by the
+            supervisor who supervised the work recorded herein or, in their absence, by the Head of the
+            {{ $department }}. It is understood that due recognition will be given to the author of this report
+            and to the {{ $department }}, {{ $campus }}, Tribhuvan University, in any use of the material of
+            this report. Copying, publication or other use of this report for financial gain without the approval
+            of the {{ $department }} and the author&rsquo;s written permission is prohibited.
+        </p>
+
+        <div class="tu-fm-sign">
+            <div class="tu-fm-sign-block">
+                <p class="tu-fm-dots">&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;</p>
+                <p>{{ $studentNames }}</p>
+                <p>{{ $department }}</p>
+                <p>{{ $campus }}, Tribhuvan University</p>
+            </div>
+        </div>
+    @endif
+</section>
+
+{{-- Page 5 — Abstract --}}
+<section class="report-frontmatter page-break tu-frontpage" data-block="abstract" @if ($editable) id="edit-target-block-abstract" contenteditable="true" spellcheck="false" @endif>
+    @if ($report->frontOverride('abstract'))
+        {!! $report->frontOverride('abstract') !!}
+    @else
+        @include('reports.partials.tu-fm-header')
+
+        <h2 class="tu-fm-heading">Abstract</h2>
+
+        <p class="tu-fm-body">
+            This project work report presents the design and implementation of &ldquo;{{ $title }}&rdquo;. It describes the
+            problem addressed, the methodology followed, and the key results obtained. The system was developed using
+            established software-engineering practices and tested against its requirements. The report summarises the
+            objectives, scope, tools used, and the outcomes achieved, and concludes with recommendations for future
+            enhancement. <em>(Replace this with your own abstract of no more than 150 words.)</em>
+        </p>
     @endif
 </section>

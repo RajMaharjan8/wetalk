@@ -16,7 +16,12 @@ class EnsureUserIsAdmin
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (! Auth::user()?->isAdmin()) {
+        $user = Auth::user();
+
+        // Allow full admins (is_admin / super-admin) and any staff member who
+        // holds at least one role — their per-page permission is enforced by the
+        // route's own `can:` gate.
+        if (! $user || (! $user->isAdmin() && $user->roles->isEmpty())) {
             abort(403, 'Admins only.');
         }
 

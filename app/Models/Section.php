@@ -41,4 +41,13 @@ class Section extends Model
     {
         return $this->placement === 'front';
     }
+
+    /**
+     * Whether this section is unnumbered back matter (References, Appendix …)
+     * shown after the body.
+     */
+    public function isBackPage(): bool
+    {
+        return $this->placement === 'back';
+    }
 }

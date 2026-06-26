@@ -141,9 +141,6 @@ new class extends Component
                             <span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-red-800 dark:bg-red-500/10 dark:text-red-300">
                                 <span class="text-base leading-none">✗</span> {{ __(':count to fix', ['count' => $failCount]) }}
                             </span>
-                            <span class="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-3 py-1 text-yellow-900 dark:bg-yellow-500/10 dark:text-yellow-300">
-                                <span class="text-base leading-none">!</span> {{ __(':count to review', ['count' => $warnCount]) }}
-                            </span>
                             <span class="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-green-800 dark:bg-green-500/10 dark:text-green-300">
                                 <span class="text-base leading-none">✓</span> {{ __(':count OK', ['count' => $passCount]) }}
                             </span>
@@ -162,25 +159,6 @@ new class extends Component
                                         <p class="text-sm font-semibold text-red-900 dark:text-red-300">{{ $result['label'] }}</p>
                                         @if ($result['detail'])
                                             <p class="mt-0.5 text-sm text-red-800 dark:text-red-300">{{ $result['detail'] }}</p>
-                                        @endif
-                                    </div>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </section>
-                @endif
-
-                @if ($warnCount > 0)
-                    <section>
-                        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-yellow-800 dark:text-yellow-300">{{ __('Worth reviewing') }}</h3>
-                        <ul class="space-y-2">
-                            @foreach ($grouped[\App\Support\Checks\CheckResult::WARN] as $result)
-                                <li class="flex items-start gap-3 rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 dark:border-yellow-500/20 dark:bg-yellow-500/10">
-                                    <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-yellow-500 text-xs font-bold text-white">!</span>
-                                    <div class="min-w-0 flex-1">
-                                        <p class="text-sm font-semibold text-yellow-900 dark:text-yellow-300">{{ $result['label'] }}</p>
-                                        @if ($result['detail'])
-                                            <p class="mt-0.5 text-sm text-yellow-800 dark:text-yellow-300">{{ $result['detail'] }}</p>
                                         @endif
                                     </div>
                                 </li>

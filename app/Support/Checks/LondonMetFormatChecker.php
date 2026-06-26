@@ -202,6 +202,14 @@ class LondonMetFormatChecker implements FormatChecker
             return CheckResult::warn('Font sizes (Heading 14pt / body 12pt)', 'Could not determine the body font size from this PDF.');
         }
 
+        // Some PDF generators (e.g. headless-Chromium / Paged.js output) encode
+        // the size at the font-selection operator rather than the text matrix,
+        // so the measured value collapses to ~1pt. That's "unmeasurable", not
+        // "wrong" — warn instead of failing on an obviously bogus reading.
+        if ($bodySize < 4.0) {
+            return CheckResult::warn('Font sizes (Heading 14pt / body 12pt)', 'Font sizes could not be measured reliably from this PDF (the text matrix does not carry point sizes). Check the document uses 12pt body / 14pt headings.');
+        }
+
         $bodyOk = abs($bodySize - 12.0) <= 0.6;
         $headingOk = $headingSizes !== [] && $this->averageInRange($headingSizes, 14.0, 0.8);
 

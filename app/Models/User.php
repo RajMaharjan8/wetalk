@@ -11,15 +11,28 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
+use Spatie\Permission\Traits\HasRoles;
 
 #[Fillable(['name', 'email', 'password', 'google_id', 'avatar_url', 'is_admin', 'suspended_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, HasRoles, Notifiable;
 
+    /** Default per-user report cap, used when the admin hasn't set one. */
     public const MAX_REPORTS = 2;
+
+    /**
+     * The active per-user report limit: the admin-configured global setting
+     * ("max_reports_per_user") when present, otherwise the default constant.
+     */
+    public static function reportLimit(): int
+    {
+        $limit = (int) Setting::get('max_reports_per_user', (string) self::MAX_REPORTS);
+
+        return $limit > 0 ? $limit : self::MAX_REPORTS;
+    }
 
     public function reports(): HasMany
     {
@@ -28,7 +41,7 @@ class User extends Authenticatable
 
     public function hasReachedReportLimit(): bool
     {
-        return $this->reports()->count() >= self::MAX_REPORTS;
+        return $this->reports()->count() >= self::reportLimit();
     }
 
     public function isAdmin(): bool

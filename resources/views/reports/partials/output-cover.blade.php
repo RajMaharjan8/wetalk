@@ -3,7 +3,7 @@
 {{-- The report cover for the paginated output and the preview edit mode.
      Renders the user's saved override when present, otherwise the generated
      cover for the report's format. --}}
-<div class="report-cover" data-block="cover" @if ($editing) contenteditable="true" spellcheck="false" @endif>
+<div class="report-cover" data-block="cover" @if ($editing) id="edit-target-cover" contenteditable="true" spellcheck="false" @endif>
     @if ($report->frontOverride('cover'))
         {!! $report->frontOverride('cover') !!}
     @elseif ($report->cover_format === 'tu')
@@ -12,10 +12,15 @@
         <div class="cover-sheet-plain">
             <div class="cover-logo-row">
                 <img src="{{ asset('images/london-met-logo.png') }}" alt="London Metropolitan University">
+                {{-- Machine-readable institution names: present in the PDF text
+                     layer (so the format checker can verify them) but visually
+                     unobtrusive — the logos carry the visual branding. --}}
+                <span class="cover-institution-name">London Metropolitan University</span>
             </div>
 
             <div class="cover-logo-college">
                 <img src="{{ asset('images/islington-logo.png') }}" alt="Islington College">
+                <span class="cover-institution-name">Islington College</span>
             </div>
 
             <div class="cover-block">

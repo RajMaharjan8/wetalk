@@ -64,9 +64,11 @@ it('auto-generates a demo report with sections, an acknowledgement and a cited r
 
     $report = $user->reports()->first();
 
-    // Two content sections + a dedicated References section.
+    // Two numbered content sections (Introduction, Discussion); References is
+    // NOT a numbered body chapter.
     expect($report)->not->toBeNull()
-        ->and($report->sections()->where('placement', 'body')->count())->toBe(3)
+        ->and($report->sections()->where('placement', 'body')->count())->toBe(2)
+        ->and($report->sections()->where('placement', 'body')->where('title', 'References')->exists())->toBeFalse()
         ->and($report->references()->count())->toBe(1);
 
     // Acknowledgement is created as front matter.
@@ -78,10 +80,10 @@ it('auto-generates a demo report with sections, an acknowledgement and a cited r
     expect($intro->content)->toContain('class="ref-cite"')
         ->and($intro->content)->toContain('data-ref-id="'.$reference->id.'"');
 
-    // The bibliography placeholder lives in its own References section, last.
-    $last = $report->sections()->where('placement', 'body')->get()->sortByDesc('order')->first();
-    expect($last->title)->toBe('References')
-        ->and($last->content)->toContain('data-references-list');
+    // The bibliography placeholder lives in the dedicated back-matter References page.
+    $references = $report->sections()->where('placement', 'back')->where('title', 'References')->first();
+    expect($references)->not->toBeNull()
+        ->and($references->content)->toContain('data-references-list');
 });
 
 it('uses the IEEE reference format for TU reports and Harvard for London Met', function () {
@@ -108,7 +110,8 @@ it('does not duplicate demo content when run twice on the same report', function
 
     $report = $user->reports()->first();
 
-    expect($report->sections()->where('placement', 'body')->count())->toBe(3)
+    expect($report->sections()->where('placement', 'body')->count())->toBe(2)
+        ->and($report->sections()->where('placement', 'back')->where('title', 'References')->count())->toBe(1)
         ->and($report->sections()->where('placement', 'front')->where('title', 'Acknowledgement')->count())->toBe(1)
         ->and($report->references()->count())->toBe(1);
 });

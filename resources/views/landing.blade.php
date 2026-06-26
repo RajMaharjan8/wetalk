@@ -155,30 +155,28 @@
     </section>
 
     {{-- ============ How it works ============ --}}
-    <section id="how" class="py-20">
-        <div class="mx-auto max-w-6xl px-4 sm:px-6">
-            <p class="text-center text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">Three steps, one block</p>
-            <h2 class="mt-3 text-center text-3xl font-bold font-display tracking-tight text-gray-900 dark:text-gray-100">From blank page to bound report</h2>
-            <p class="mx-auto mt-3 max-w-xl text-center text-sm text-gray-500 dark:text-gray-400">No setup, no template wrangling. The whole flow lives in a single, focused workspace.</p>
+    @php
+        $steps = \App\Models\LandingFeature::section('steps')->visible()->get();
+    @endphp
+    @if ($steps->isNotEmpty())
+        <section id="how" class="py-20">
+            <div class="mx-auto max-w-6xl px-4 sm:px-6">
+                <p class="text-center text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">{{ LandingContent::get('landing_steps_eyebrow') }}</p>
+                <h2 class="mt-3 text-center text-3xl font-bold font-display tracking-tight text-gray-900 dark:text-gray-100">{{ LandingContent::get('landing_steps_heading') }}</h2>
+                <p class="mx-auto mt-3 max-w-xl text-center text-sm text-gray-500 dark:text-gray-400">{{ LandingContent::get('landing_steps_subheading') }}</p>
 
-            <div class="mt-12 grid gap-8 sm:grid-cols-3">
-                @php
-                    $steps = [
-                        ['1', 'Add your details', 'Enter the title, author, guide and department once. Your title page and front matter build themselves.'],
-                        ['2', 'Write & cite', 'Write your chapters, add your sources, and reference them inline with [[key]]. The preview updates live.'],
-                        ['3', 'Export the PDF', 'Pick IEEE or APA, choose your margins, and download a polished, submission-ready document.'],
-                    ];
-                @endphp
-                @foreach ($steps as [$n, $title, $body])
-                    <div>
-                        <span class="text-3xl font-bold text-indigo-600">{{ $n }}</span>
-                        <h3 class="mt-2 text-base font-semibold text-gray-900 dark:text-gray-100">{{ $title }}</h3>
-                        <p class="mt-1.5 text-sm leading-relaxed text-gray-500 dark:text-gray-400">{{ $body }}</p>
-                    </div>
-                @endforeach
+                <div class="mt-12 grid gap-8 sm:grid-cols-3">
+                    @foreach ($steps as $step)
+                        <div>
+                            <span class="text-3xl font-bold text-indigo-600">{{ filled($step->badge) ? $step->badge : $loop->iteration }}</span>
+                            <h3 class="mt-2 text-base font-semibold text-gray-900 dark:text-gray-100">{{ $step->title }}</h3>
+                            <p class="mt-1.5 text-sm leading-relaxed text-gray-500 dark:text-gray-400">{{ $step->description }}</p>
+                        </div>
+                    @endforeach
+                </div>
             </div>
-        </div>
-    </section>
+        </section>
+    @endif
 
     {{-- ============ University formats ============ --}}
     <section id="formats" class="bg-gray-50 py-20 dark:bg-gray-900">
@@ -263,8 +261,8 @@
     {{-- ============ FAQ ============ --}}
     <section id="faq" class="bg-gray-50 py-20 dark:bg-gray-900" x-data="{ open: 1 }">
         <div class="mx-auto max-w-3xl px-4 sm:px-6">
-            <p class="text-center text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">Questions</p>
-            <h2 class="mt-3 text-center text-3xl font-bold font-display tracking-tight text-gray-900 dark:text-gray-100">Frequently asked</h2>
+            <p class="text-center text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">{{ LandingContent::get('landing_faqs_eyebrow') }}</p>
+            <h2 class="mt-3 text-center text-3xl font-bold font-display tracking-tight text-gray-900 dark:text-gray-100">{{ LandingContent::get('landing_faqs_heading') }}</h2>
 
             <div class="mt-10 divide-y divide-gray-200 overflow-hidden rounded-xl border border-gray-200 bg-white dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
                 @foreach (\App\Models\LandingFeature::section('faqs')->visible()->get() as $i => $faq)
@@ -294,6 +292,9 @@
                 <a href="#how" class="hover:text-gray-900 dark:hover:text-gray-200">How it works</a>
                 <a href="#formats" class="hover:text-gray-900 dark:hover:text-gray-200">Formats</a>
                 <a href="#faq" class="hover:text-gray-900 dark:hover:text-gray-200">FAQ</a>
+                @foreach (\App\Models\CustomPage::published()->where('show_in_footer', true)->orderBy('order')->orderBy('title')->get() as $footerPage)
+                    <a href="{{ $footerPage->url() }}" class="hover:text-gray-900 dark:hover:text-gray-200">{{ $footerPage->title }}</a>
+                @endforeach
                 <a href="{{ route('login') }}" class="font-semibold text-indigo-600 hover:text-indigo-500">Open the generator</a>
             </div>
         </div>

@@ -90,3 +90,15 @@ it('still lets the user select, add and delete sections', function () {
     $component->call('deleteSection', $second->id);
     expect($report->sections()->whereKey($second->id)->exists())->toBeFalse();
 });
+
+it('lets a user add a custom end page (e.g. Appendix 1)', function () {
+    $report = reportWithSections();
+
+    Livewire::test('pages::report-sections', ['report' => $report])
+        ->set('newBackPageTitle', 'Appendix 1')
+        ->call('addBackPage')
+        ->assertHasNoErrors();
+
+    $back = $report->sections()->where('placement', 'back')->pluck('title')->all();
+    expect($back)->toContain('Appendix 1');
+});

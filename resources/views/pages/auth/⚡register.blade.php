@@ -2,6 +2,7 @@
 
 use App\Models\Otp;
 use App\Models\User;
+use App\Support\AuthSettings;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Validate;
@@ -29,6 +30,9 @@ new #[Title('Create account')] class extends Component
 
     public function register()
     {
+        // Hard stop when email/password auth is turned off (Google-only mode).
+        abort_unless(AuthSettings::emailAuthEnabled(), 403);
+
         $this->validate();
 
         // Created unverified: the user cannot sign in until the OTP is confirmed.

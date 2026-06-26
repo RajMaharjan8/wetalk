@@ -287,6 +287,13 @@ class TuFormatChecker implements FormatChecker
         arsort($bins);
         $dominant = (float) array_key_first($bins);
 
+        // Headless-Chromium / Paged.js PDFs encode the size outside the text
+        // matrix, so the reading collapses to ~1pt. Treat that as unmeasurable
+        // (warn) rather than a false failure.
+        if ($dominant < 4.0) {
+            return CheckResult::warn('Body font size (12pt)', 'Font size could not be measured reliably from this PDF. Ensure the body text is 12pt.');
+        }
+
         if (abs($dominant - 12.0) <= 0.6) {
             return CheckResult::pass('Body font size (12pt)', "Body text ≈ {$dominant}pt — matches the TU 12pt requirement.");
         }

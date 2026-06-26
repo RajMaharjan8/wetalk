@@ -4,12 +4,50 @@ use App\Models\Download;
 use App\Models\Feedback;
 use App\Models\Payment;
 use App\Models\Report;
+use App\Models\Setting;
 use App\Models\User;
+use App\Support\AuthSettings;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 new #[Layout('layouts::admin')] class extends Component
 {
+    /** Admin-editable cap on how many reports each user may create. */
+    public int $maxReports = 2;
+
+    /** Whether email + password login/registration is offered (else Google-only). */
+    public bool $emailAuthEnabled = true;
+
+    public function mount(): void
+    {
+        $this->maxReports = User::reportLimit();
+        $this->emailAuthEnabled = AuthSettings::emailAuthEnabled();
+    }
+
+    /** Persist the global per-user report limit. */
+    public function saveLimits(): void
+    {
+        abort_unless(auth()->user()->can('settings.manage'), 403);
+
+        $this->validate(['maxReports' => 'required|integer|min:1|max:1000']);
+
+        Setting::set('max_reports_per_user', (string) $this->maxReports);
+
+        session()->flash('limits-saved', 'Report limit saved.');
+    }
+
+    /** Toggle email/password auth on or off (live, from the switch). */
+    public function updatedEmailAuthEnabled(bool $value): void
+    {
+        abort_unless(auth()->user()->can('settings.manage'), 403);
+
+        Setting::set('email_auth_enabled', $value ? '1' : '0');
+
+        session()->flash('limits-saved', $value
+            ? 'Email & password sign-in enabled.'
+            : 'Email & password sign-in disabled — users sign in with Google only.');
+    }
+
     public function getStatsProperty(): array
     {
         return [
@@ -89,15 +127,92 @@ new #[Layout('layouts::admin')] class extends Component
 
 @php($title = 'Dashboard')
 
-<div class="space-y-8">
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        @foreach ($this->cards as $card)
+<div class="space-y-8" x-data="{ settingsOpen: false }">
+    @if (session('limits-saved'))
+        <div x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 4000)"
+             class="flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 ring-1 ring-emerald-200">
+            <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+            {{ session('limits-saved') }}
+        </div>
+    @endif
+
+    {{-- ============ Hero header ============ --}}
+    <div class="relative overflow-hidden rounded-2xl bg-linear-to-br from-indigo-600 via-indigo-600 to-violet-700 px-6 py-7 text-white shadow-lg sm:px-8">
+        <div class="absolute -right-10 -top-10 h-44 w-44 rounded-full bg-white/10 blur-2xl"></div>
+        <div class="absolute -bottom-12 right-24 h-40 w-40 rounded-full bg-white/5 blur-2xl"></div>
+        <div class="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <p class="text-sm font-medium text-indigo-100">{{ now()->format('l, F j, Y') }}</p>
+                <h1 class="mt-1 text-2xl font-bold tracking-tight">Welcome back, {{ auth()->user()->name }}</h1>
+                <p class="mt-1 text-sm text-indigo-100">Here's what's happening across {{ config('app.name') }} today.</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="rounded-xl bg-white/10 px-4 py-3 backdrop-blur">
+                    <p class="text-xs font-medium text-indigo-100">Revenue</p>
+                    <p class="text-lg font-bold">Rs. {{ number_format($this->stats['revenue'], 0) }}</p>
+                </div>
+                @can('settings.manage')
+                <button type="button" x-on:click="settingsOpen = !settingsOpen"
+                        class="inline-flex items-center gap-2 rounded-xl bg-white/15 px-4 py-3 text-sm font-semibold backdrop-blur transition hover:bg-white/25">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    Settings
+                </button>
+                @endcan
+            </div>
+        </div>
+    </div>
+
+    {{-- ============ Settings panel (collapsible) ============ --}}
+    @can('settings.manage')
+    <div x-show="settingsOpen" x-collapse x-cloak>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {{-- Reports per user --}}
+            <form wire:submit="saveLimits" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 class="text-sm font-semibold text-slate-900">Reports per user</h2>
+                <p class="mt-1 text-sm text-slate-500">Maximum reports each user can create. Existing reports above a lowered limit are kept.</p>
+                <div class="mt-4 flex items-end gap-3">
+                    <div class="w-28">
+                        <label class="block text-xs font-medium text-slate-500">Max reports</label>
+                        <input type="number" min="1" max="1000" wire:model="maxReports" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        @error('maxReports') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
+                        <span wire:loading.remove wire:target="saveLimits">Save</span>
+                        <span wire:loading wire:target="saveLimits">Saving…</span>
+                    </button>
+                </div>
+            </form>
+
+            {{-- Email/password auth toggle --}}
             <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h2 class="text-sm font-semibold text-slate-900">Email &amp; password sign-in</h2>
+                        <p class="mt-1 text-sm text-slate-500">When off, users can only sign in / sign up with Google. Registration, OTP and password-reset pages are closed.</p>
+                    </div>
+                    <label class="relative inline-flex shrink-0 cursor-pointer items-center">
+                        <input type="checkbox" wire:model.live="emailAuthEnabled" class="peer sr-only">
+                        <div class="h-6 w-11 rounded-full bg-slate-200 after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-all peer-checked:bg-indigo-600 peer-checked:after:translate-x-5"></div>
+                    </label>
+                </div>
+                <p class="mt-4 inline-flex items-center gap-2 rounded-md px-2.5 py-1 text-xs font-medium {{ $emailAuthEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }}">
+                    <span class="h-1.5 w-1.5 rounded-full {{ $emailAuthEnabled ? 'bg-emerald-500' : 'bg-slate-400' }}"></span>
+                    {{ $emailAuthEnabled ? 'Email & password enabled' : 'Google-only mode' }}
+                </p>
+            </div>
+        </div>
+    </div>
+    @endcan
+
+    {{-- ============ Stat cards ============ --}}
+    <div class="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+        @foreach ($this->cards as $card)
+            <div class="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                 <span class="flex h-10 w-10 items-center justify-center rounded-lg {{ $card['badge'] }}">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">{!! $card['icon'] !!}</svg>
                 </span>
-                <p class="mt-4 text-3xl font-semibold tracking-tight text-slate-900">{{ number_format($card['value']) }}</p>
-                <p class="mt-1 text-sm text-slate-500">{{ $card['label'] }}</p>
+                <p class="mt-4 text-2xl font-bold tracking-tight text-slate-900">{{ number_format($card['value']) }}</p>
+                <p class="mt-0.5 text-xs font-medium text-slate-500">{{ $card['label'] }}</p>
             </div>
         @endforeach
     </div>

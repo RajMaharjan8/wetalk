@@ -64,6 +64,8 @@ new class extends Component
      */
     public function sendFeedback(): void
     {
+        abort_unless(\App\Support\FeatureSettings::feedbackEnabled(), 403);
+
         if ($this->feedbackLeftToday <= 0) {
             $this->addError('fb_working', __("You've reached today's feedback limit (:limit). Please try again tomorrow.", ['limit' => $this->feedbackDailyLimit]));
 

@@ -34,7 +34,7 @@ new #[Layout('layouts::admin')] class extends Component
     public $heroImage = null;
 
     // ---- Card add form ----
-    #[Validate('required|in:features,formats,samples,faqs')]
+    #[Validate('required|in:features,steps,formats,samples,faqs')]
     public string $newSection = 'features';
 
     #[Validate('required|string|max:120')]
@@ -165,7 +165,7 @@ new #[Layout('layouts::admin')] class extends Component
     public function addCard(): void
     {
         $this->validate([
-            'newSection' => 'required|in:features,formats,samples,faqs',
+            'newSection' => 'required|in:features,steps,formats,samples,faqs',
             'newTitle' => 'required|string|max:120',
             'newDescription' => 'nullable|string|max:500',
             'newBadge' => 'nullable|string|max:8',
@@ -420,6 +420,11 @@ new #[Layout('layouts::admin')] class extends Component
                 <div class="sm:col-span-3"><label class="block text-sm font-medium text-gray-700">Features subheading</label><input type="text" wire:model="content.landing_features_subheading" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
             </div>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div><label class="block text-sm font-medium text-gray-700">How it works eyebrow</label><input type="text" wire:model="content.landing_steps_eyebrow" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                <div class="sm:col-span-2"><label class="block text-sm font-medium text-gray-700">How it works heading</label><input type="text" wire:model="content.landing_steps_heading" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                <div class="sm:col-span-3"><label class="block text-sm font-medium text-gray-700">How it works subheading</label><input type="text" wire:model="content.landing_steps_subheading" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
+            </div>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div><label class="block text-sm font-medium text-gray-700">Formats eyebrow</label><input type="text" wire:model="content.landing_formats_eyebrow" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
                 <div class="sm:col-span-2"><label class="block text-sm font-medium text-gray-700">Formats heading</label><input type="text" wire:model="content.landing_formats_heading" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
                 <div class="sm:col-span-3"><label class="block text-sm font-medium text-gray-700">Formats subheading</label><input type="text" wire:model="content.landing_formats_subheading" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
@@ -428,6 +433,10 @@ new #[Layout('layouts::admin')] class extends Component
                 <div><label class="block text-sm font-medium text-gray-700">Samples eyebrow</label><input type="text" wire:model="content.landing_samples_eyebrow" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
                 <div class="sm:col-span-2"><label class="block text-sm font-medium text-gray-700">Samples heading</label><input type="text" wire:model="content.landing_samples_heading" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
                 <div class="sm:col-span-3"><label class="block text-sm font-medium text-gray-700">Samples subheading</label><input type="text" wire:model="content.landing_samples_subheading" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
+            </div>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div><label class="block text-sm font-medium text-gray-700">FAQ eyebrow</label><input type="text" wire:model="content.landing_faqs_eyebrow" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                <div class="sm:col-span-2"><label class="block text-sm font-medium text-gray-700">FAQ heading</label><input type="text" wire:model="content.landing_faqs_heading" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
             </div>
         </div>
         </div>
@@ -490,6 +499,7 @@ new #[Layout('layouts::admin')] class extends Component
                 <label class="block text-sm font-medium text-gray-700">Section</label>
                 <select wire:model="newSection" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <option value="features">Features</option>
+                    <option value="steps">How it works (steps)</option>
                     <option value="formats">University formats</option>
                     <option value="samples">Sample reports</option>
                     <option value="faqs">FAQs</option>
@@ -527,7 +537,7 @@ new #[Layout('layouts::admin')] class extends Component
 
     {{-- ============ Card sections (sub-tabbed: one list at a time) ============ --}}
     <div class="flex flex-wrap gap-1 rounded-lg bg-gray-100 p-1">
-        @foreach (['features' => 'Features', 'formats' => 'University formats', 'samples' => 'Sample reports', 'faqs' => 'FAQs'] as $section => $label)
+        @foreach (['features' => 'Features', 'steps' => 'How it works', 'formats' => 'University formats', 'samples' => 'Sample reports', 'faqs' => 'FAQs'] as $section => $label)
             <button type="button" x-on:click="cardTab = '{{ $section }}'"
                     class="rounded-md px-3 py-1.5 text-sm font-medium transition"
                     :class="cardTab === '{{ $section }}' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-800'">
@@ -536,7 +546,7 @@ new #[Layout('layouts::admin')] class extends Component
         @endforeach
     </div>
 
-    @foreach (['features' => 'Features', 'formats' => 'University formats', 'samples' => 'Sample reports', 'faqs' => 'FAQs'] as $section => $label)
+    @foreach (['features' => 'Features', 'steps' => 'How it works', 'formats' => 'University formats', 'samples' => 'Sample reports', 'faqs' => 'FAQs'] as $section => $label)
         <div x-show="cardTab === '{{ $section }}'">
             <ul wire:sort="reorder" class="space-y-2">
                 @forelse ($this->features($section) as $card)

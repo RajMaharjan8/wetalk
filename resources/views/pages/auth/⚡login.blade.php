@@ -2,6 +2,7 @@
 
 use App\Models\Otp;
 use App\Models\User;
+use App\Support\AuthSettings;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Title;
@@ -27,6 +28,9 @@ new #[Title('Sign in')] class extends Component
 
     public function authenticate()
     {
+        // Hard stop when email/password auth is turned off (Google-only mode).
+        abort_unless(AuthSettings::emailAuthEnabled(), 403);
+
         $this->validate();
 
         $user = User::where('email', $this->email)->first();
@@ -62,11 +66,14 @@ new #[Title('Sign in')] class extends Component
     <x-app-header />
     <x-validation-popup />
 
-    <div class="flex items-center justify-center px-4 py-12">
-        <div class="w-full max-w-md rounded-xl bg-white p-8 shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
+    <div class="flex items-center justify-center px-4 py-16">
+        <div class="w-full max-w-md rounded-2xl bg-white p-8 shadow-md ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700 sm:p-10">
             <div class="text-center">
-                <h1 class="text-2xl font-semibold font-display text-gray-900 dark:text-gray-100">{{ __('Sign in to :app', ['app' => config('app.name')]) }}</h1>
-                <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ __('Use your email and password, or continue with Google.') }}</p>
+                <div class="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
+                    <x-app-logo size="h-9 w-9" text="text-base" />
+                </div>
+                <h1 class="text-2xl font-bold font-display text-gray-900 dark:text-gray-100">{{ __('Sign in to :app', ['app' => \App\Support\LandingContent::siteName()]) }}</h1>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ AuthSettings::emailAuthEnabled() ? __('Use your email and password, or continue with Google.') : __('Continue with your Google account to sign in.') }}</p>
             </div>
 
             @if (session('status'))
@@ -76,6 +83,7 @@ new #[Title('Sign in')] class extends Component
                 <div class="mt-6 rounded-md bg-red-50 px-4 py-3 text-sm font-medium text-red-800 ring-1 ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20">{{ session('auth-error') ?? session('suspended') }}</div>
             @endif
 
+            @if (AuthSettings::emailAuthEnabled())
             <form wire:submit="authenticate" class="mt-8 space-y-4">
                 <div>
                     <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Email') }}</label>
@@ -106,9 +114,10 @@ new #[Title('Sign in')] class extends Component
             <div class="my-6 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-400">
                 <span class="h-px flex-1 bg-gray-200 dark:bg-gray-700"></span>{{ __('OR') }}<span class="h-px flex-1 bg-gray-200 dark:bg-gray-700"></span>
             </div>
+            @endif
 
             <a href="{{ route('auth.google.redirect') }}"
-               class="inline-flex w-full items-center justify-center gap-3 rounded-md bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 ring-1 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-100 dark:ring-gray-600 dark:hover:bg-gray-700">
+               class="inline-flex w-full items-center justify-center gap-3 rounded-lg bg-white px-4 py-3 text-sm font-semibold text-gray-800 shadow-sm ring-1 ring-gray-300 transition hover:bg-gray-50 hover:shadow dark:bg-gray-800 dark:text-gray-100 dark:ring-gray-600 dark:hover:bg-gray-700">
                 <svg class="h-5 w-5" viewBox="0 0 48 48" aria-hidden="true">
                     <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303C33.972 32.91 29.418 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
                     <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
@@ -118,9 +127,16 @@ new #[Title('Sign in')] class extends Component
                 {{ __('Continue with Google') }}
             </a>
 
-            <p class="mt-6 text-center text-sm text-gray-600 dark:text-gray-300">
-                {{ __('New here?') }} <a href="{{ route('register') }}" wire:navigate class="font-medium text-indigo-600 hover:text-indigo-500">{{ __('Create an account') }}</a>
-            </p>
+            @if (AuthSettings::emailAuthEnabled())
+                <p class="mt-6 text-center text-sm text-gray-600 dark:text-gray-300">
+                    {{ __('New here?') }} <a href="{{ route('register') }}" wire:navigate class="font-medium text-indigo-600 hover:text-indigo-500">{{ __('Create an account') }}</a>
+                </p>
+            @else
+                <p class="mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-gray-400 dark:text-gray-500">
+                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+                    {{ __('Secure sign-in with Google') }}
+                </p>
+            @endif
         </div>
     </div>
 </div>

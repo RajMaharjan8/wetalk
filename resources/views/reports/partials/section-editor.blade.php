@@ -28,7 +28,7 @@
     </div>
 
     {{-- Formatting toolbar --}}
-    <div class="se-toolbar">
+    <div class="se-toolbar" x-data="{ moreTools: false }">
         <button type="button" x-on:mousedown.prevent x-on:click="setBlock('p')" class="toolbar-btn">{{ __('Normal') }}</button>
         <button type="button" x-on:mousedown.prevent x-on:click="setBlock('h2')" class="toolbar-btn font-semibold" title="{{ __('Heading 2 — numbered 1.1') }}">{{ __('Heading 2') }}</button>
         <button type="button" x-on:mousedown.prevent x-on:click="setBlock('h3')" class="toolbar-btn font-semibold" title="{{ __('Heading 3 — numbered 1.1.1') }}">{{ __('Heading 3') }}</button>
@@ -55,18 +55,30 @@
         <span class="toolbar-divider"></span>
         <button type="button" x-on:mousedown.prevent x-on:click="openCitePicker()" class="toolbar-btn font-medium text-indigo-600" title="{{ __('Insert a citation (ref here) — pick which reference to use') }}">{{ __('Cite') }}</button>
         <button type="button" x-on:mousedown.prevent x-on:click="insertReferencesList()" class="toolbar-btn font-medium text-indigo-600" title="{{ __('Insert the auto-generated references list — lists only the references used in this report') }}">{{ __('References list') }}</button>
+        {{-- Advanced tools (table + image sizing) — tucked behind a toggle so the
+             toolbar stays simple for everyday writing. --}}
         <span class="toolbar-divider"></span>
-        <span class="se-group-label">{{ __('Table:') }}</span>
-        <button type="button" x-on:mousedown.prevent x-on:click="addRow()" class="toolbar-btn" title="{{ __('Add a row below the cursor') }}">+ {{ __('Row') }}</button>
-        <button type="button" x-on:mousedown.prevent x-on:click="deleteRow()" class="toolbar-btn" title="{{ __('Delete the current row') }}">&minus; {{ __('Row') }}</button>
-        <button type="button" x-on:mousedown.prevent x-on:click="addColumn()" class="toolbar-btn" title="{{ __('Add a column right of the cursor') }}">+ {{ __('Col') }}</button>
-        <button type="button" x-on:mousedown.prevent x-on:click="deleteColumn()" class="toolbar-btn" title="{{ __('Delete the current column') }}">&minus; {{ __('Col') }}</button>
-        <button type="button" x-on:mousedown.prevent x-on:click="resizeColumn(6)" class="toolbar-btn" title="{{ __('Make the current column wider') }}">{{ __('Col wider') }}</button>
-        <button type="button" x-on:mousedown.prevent x-on:click="resizeColumn(-6)" class="toolbar-btn" title="{{ __('Make the current column narrower') }}">{{ __('Col narrower') }}</button>
-        <span class="toolbar-divider"></span>
-        <span class="se-group-label">{{ __('Image:') }}</span>
-        <button type="button" x-on:mousedown.prevent x-on:click="resizeImage(-10)" class="toolbar-btn" title="{{ __('Click an image, then shrink it') }}">{{ __('Smaller') }}</button>
-        <button type="button" x-on:mousedown.prevent x-on:click="resizeImage(10)" class="toolbar-btn" title="{{ __('Click an image, then enlarge it') }}">{{ __('Larger') }}</button>
+        <button type="button" x-on:click="moreTools = !moreTools" class="toolbar-btn font-medium" :class="moreTools ? 'text-indigo-600' : ''" :title="moreTools ? '{{ __('Hide table & image tools') }}' : '{{ __('Show table & image tools') }}'">
+            <span x-show="!moreTools">{{ __('More ▾') }}</span>
+            <span x-show="moreTools" x-cloak>{{ __('Less ▴') }}</span>
+        </button>
+
+        <template x-if="moreTools">
+            <span class="contents">
+                <span class="toolbar-divider"></span>
+                <span class="se-group-label">{{ __('Table:') }}</span>
+                <button type="button" x-on:mousedown.prevent x-on:click="addRow()" class="toolbar-btn" title="{{ __('Add a row below the cursor') }}">+ {{ __('Row') }}</button>
+                <button type="button" x-on:mousedown.prevent x-on:click="deleteRow()" class="toolbar-btn" title="{{ __('Delete the current row') }}">&minus; {{ __('Row') }}</button>
+                <button type="button" x-on:mousedown.prevent x-on:click="addColumn()" class="toolbar-btn" title="{{ __('Add a column right of the cursor') }}">+ {{ __('Col') }}</button>
+                <button type="button" x-on:mousedown.prevent x-on:click="deleteColumn()" class="toolbar-btn" title="{{ __('Delete the current column') }}">&minus; {{ __('Col') }}</button>
+                <button type="button" x-on:mousedown.prevent x-on:click="resizeColumn(6)" class="toolbar-btn" title="{{ __('Make the current column wider') }}">{{ __('Col wider') }}</button>
+                <button type="button" x-on:mousedown.prevent x-on:click="resizeColumn(-6)" class="toolbar-btn" title="{{ __('Make the current column narrower') }}">{{ __('Col narrower') }}</button>
+                <span class="toolbar-divider"></span>
+                <span class="se-group-label">{{ __('Image:') }}</span>
+                <button type="button" x-on:mousedown.prevent x-on:click="resizeImage(-10)" class="toolbar-btn" title="{{ __('Click an image, then shrink it') }}">{{ __('Smaller') }}</button>
+                <button type="button" x-on:mousedown.prevent x-on:click="resizeImage(10)" class="toolbar-btn" title="{{ __('Click an image, then enlarge it') }}">{{ __('Larger') }}</button>
+            </span>
+        </template>
     </div>
 
     {{-- Citation picker --}}

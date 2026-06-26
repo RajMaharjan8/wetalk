@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 
 class LandingFeature extends Model
 {
-    public const SECTIONS = ['features', 'formats', 'samples', 'faqs'];
+    public const SECTIONS = ['features', 'steps', 'formats', 'samples', 'faqs'];
 
     protected $fillable = [
         'section',
