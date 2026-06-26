@@ -11,7 +11,6 @@ use App\Support\Payments\PaymentSettings;
 use App\Support\ReportCompiler;
 use App\Support\ReportWord;
 use Illuminate\Http\Request;
-use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
@@ -288,29 +287,23 @@ Route::middleware('auth')->group(function () {
 | Browser-triggered Artisan commands for hosts without SSH. Remove once the
 | deploy is done.
 */
-Route::get('/storage-link', function () {
-    Artisan::call('storage:link');
-
-    return response('<pre>'.e(Artisan::output()).'</pre>');
-});
-
 Route::get('/migrate', function () {
     Artisan::call('migrate', ['--force' => true]);
 
     return response('<pre>'.e(Artisan::output()).'</pre>');
-})->withoutMiddleware(StartSession::class);
+});
 
 Route::get('/seed', function () {
     Artisan::call('db:seed', ['--force' => true]);
 
     return response('<pre>'.e(Artisan::output()).'</pre>');
-})->withoutMiddleware(StartSession::class);
+});
 
 Route::get('/storage-link', function () {
     Artisan::call('storage:link');
 
     return response('<pre>'.e(Artisan::output()).'</pre>');
-})->withoutMiddleware(StartSession::class);
+});
 
 /*
 |--------------------------------------------------------------------------
