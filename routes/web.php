@@ -12,6 +12,7 @@ use App\Support\ReportCompiler;
 use App\Support\ReportWord;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 
 // Public marketing landing page. Signed-in users skip it and go straight to
@@ -303,6 +304,29 @@ Route::get('/storage-link', function () {
     Artisan::call('storage:link');
 
     return response('<pre>'.e(Artisan::output()).'</pre>');
+});
+
+Route::get('/clear', function () {
+    foreach (['view:clear', 'route:clear', 'config:clear', 'cache:clear', 'event:clear'] as $command) {
+        Artisan::call($command);
+    }
+
+    return response('<pre>Caches cleared. Try the app again.</pre>');
+});
+
+// Lists the page-component filenames as the server actually stored them, with
+// the hex of the leading bytes so a mangled ⚡ (should be E2 9A A1) is visible.
+Route::get('/debug-pages', function () {
+    $dir = resource_path('views/pages');
+    $rows = [];
+
+    foreach (File::allFiles($dir) as $file) {
+        $name = $file->getFilename();
+        $hex = strtoupper(bin2hex(substr($name, 0, 6)));
+        $rows[] = $hex.'   '.$name;
+    }
+
+    return response('<pre>'.e(implode("\n", $rows)).'</pre>');
 });
 
 /*
