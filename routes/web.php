@@ -11,6 +11,7 @@ use App\Support\Payments\PaymentSettings;
 use App\Support\ReportCompiler;
 use App\Support\ReportWord;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
 // Public marketing landing page. Signed-in users skip it and go straight to
@@ -277,6 +278,31 @@ Route::middleware('auth')->group(function () {
             ->route('reports.cover', ['report' => $report])
             ->with('cover-saved', 'Applied your custom cover “'.$template->name.'”.');
     })->name('reports.cover.use-template')->can('update', 'report');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Temporary deploy helpers (NO SHELL ACCESS)
+|--------------------------------------------------------------------------
+| Browser-triggered Artisan commands for hosts without SSH. Remove once the
+| deploy is done.
+*/
+Route::get('/storage-link', function () {
+    Artisan::call('storage:link');
+
+    return response('<pre>'.e(Artisan::output()).'</pre>');
+});
+
+Route::get('/migrate', function () {
+    Artisan::call('migrate', ['--force' => true]);
+
+    return response('<pre>'.e(Artisan::output()).'</pre>');
+});
+
+Route::get('/seed', function () {
+    Artisan::call('db:seed', ['--force' => true]);
+
+    return response('<pre>'.e(Artisan::output()).'</pre>');
 });
 
 /*
