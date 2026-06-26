@@ -307,11 +307,36 @@ Route::get('/storage-link', function () {
 });
 
 Route::get('/clear', function () {
+    $log = [];
+
     foreach (['view:clear', 'route:clear', 'config:clear', 'cache:clear', 'event:clear'] as $command) {
         Artisan::call($command);
+        $log[] = $command.' -> ok';
     }
 
-    return response('<pre>Caches cleared. Try the app again.</pre>');
+    // Livewire 4 caches a compiled component manifest; stale entries from a
+    // different machine break component discovery. Delete the whole cache dir.
+    foreach ([storage_path('framework/cache/livewire-components.php'), storage_path('framework/views')] as $path) {
+        if (File::isDirectory($path)) {
+            foreach (File::glob($path.'/*.php') as $file) {
+                File::delete($file);
+            }
+            $log[] = 'cleared dir '.$path;
+        } elseif (File::exists($path)) {
+            File::delete($path);
+            $log[] = 'deleted '.$path;
+        }
+    }
+
+    // Bootstrap caches (route/config/services) compiled on another machine.
+    foreach (File::glob(base_path('bootstrap/cache').'/*.php') as $file) {
+        if (! str_contains($file, 'packages.php') && ! str_contains($file, 'services.php')) {
+            File::delete($file);
+            $log[] = 'deleted '.$file;
+        }
+    }
+
+    return response('<pre>'.e(implode("\n", $log))."\n\nDone. Try the app again.</pre>");
 });
 
 // Lists the page-component filenames as the server actually stored them, with
