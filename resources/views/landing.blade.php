@@ -52,6 +52,10 @@
             <a href="{{ route('home') }}" class="flex items-center gap-2 text-white">
                 <x-app-logo badge="bg-white/15 text-white ring-1 ring-white/25 backdrop-blur" />
                 <span class="text-sm font-semibold">{{ LandingContent::siteName() }}</span>
+                @if (($siteLabel = LandingContent::siteLabel()) !== '')
+                    <span class="h-5 w-px bg-white/30"></span>
+                    <span class="text-sm font-bold text-sky-300">{{ $siteLabel }}</span>
+                @endif
             </a>
             <div class="hidden items-center gap-7 text-sm font-medium text-white/80 md:flex">
                 <a href="#features" class="hover:text-white">Features</a>
@@ -211,29 +215,31 @@
             <div class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach (\App\Models\LandingFeature::section('samples')->visible()->get() as $sample)
                     @php
-                        $previewUrl = $sample->link ?: null;
-                        $clickAttr = $previewUrl ? "open('".e($previewUrl)."')" : '';
+                        $detailUrl = $sample->sampleUrl();
                     @endphp
-                    <button
-                        type="button"
-                        x-on:click="{{ $clickAttr }}"
-                        class="group flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white text-left shadow-sm transition hover:border-indigo-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-indigo-500"
-                    >
+                    <a href="{{ $detailUrl ?: '#' }}" wire:navigate
+                        class="group flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white text-left shadow-sm transition hover:border-indigo-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-indigo-500">
                         {{-- 400×150 banner image --}}
                         @if ($sample->iconUrl())
-                            <img src="{{ $sample->iconUrl() }}" alt="{{ $sample->title }}" class="aspect-[8/3] w-full object-cover">
+                            <img src="{{ $sample->iconUrl() }}" alt="{{ $sample->title }}" class="aspect-8/3 w-full object-cover">
                         @else
-                            <div class="flex aspect-[8/3] w-full items-center justify-center bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15">
+                            <div class="flex aspect-8/3 w-full items-center justify-center bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15">
                                 <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke-width="1.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
                             </div>
                         @endif
                         <div class="flex flex-1 flex-col p-6">
                             <h3 class="text-base font-semibold text-gray-900 group-hover:text-indigo-700 dark:text-gray-100">{{ $sample->title }}</h3>
-                            <p class="mt-1.5 text-sm leading-relaxed text-gray-500 dark:text-gray-400">{{ $sample->description }}</p>
+                            <p class="mt-1.5 text-sm leading-relaxed text-gray-500 dark:text-gray-400">{{ $sample->excerpt ?: $sample->description }}</p>
                             <span class="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-indigo-600">View sample report &rarr;</span>
                         </div>
-                    </button>
+                    </a>
                 @endforeach
+            </div>
+
+            <div class="mt-10 text-center">
+                <a href="{{ route('samples.index') }}" wire:navigate class="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:text-indigo-700">
+                    {{ __('Browse all sample reports') }} &rarr;
+                </a>
             </div>
         </div>
 
@@ -286,6 +292,10 @@
             <div class="flex items-center gap-2 text-gray-900 dark:text-gray-100">
                 <x-app-logo size="h-7 w-7" text="text-xs" />
                 <span class="font-semibold">{{ LandingContent::siteName() }}</span>
+                @if (($siteLabel = LandingContent::siteLabel()) !== '')
+                    <span class="h-4 w-px bg-gray-300 dark:bg-gray-600"></span>
+                    <span class="font-bold text-indigo-600 dark:text-indigo-400">{{ $siteLabel }}</span>
+                @endif
             </div>
             <div class="flex flex-wrap items-center gap-x-6 gap-y-1 text-gray-500 dark:text-gray-400">
                 <a href="#features" class="hover:text-gray-900 dark:hover:text-gray-200">Features</a>
@@ -305,6 +315,10 @@
             @endif
         </div>
     </footer>
+
+    @if (request()->routeIs('home'))
+        @include('partials.google-one-tap')
+    @endif
 
     @livewireScripts
 </body>

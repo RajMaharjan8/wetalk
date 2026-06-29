@@ -10,10 +10,10 @@ it('shows the landing page to guests at /', function () {
         ->assertSee('Sample Report for e-commerce website for bca/csit');
 });
 
-it('sends signed-in users from / to their dashboard', function () {
+it('shows the landing page at / to signed-in users too (single home)', function () {
     $this->actingAs(User::factory()->create())
         ->get('/')
-        ->assertRedirect(route('reports.index'));
+        ->assertOk();
 });
 
 it('serves the dashboard at /dashboard', function () {

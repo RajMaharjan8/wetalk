@@ -16,13 +16,8 @@ it('renders landing sections from the database (seeded defaults)', function () {
         ->assertSee('Sample Report for e-commerce website for bca/csit'); // a seeded sample
 });
 
-it('serves the landing page at /landing for signed-in users (logo target)', function () {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->get('/landing')
-        ->assertOk()
-        ->assertSee('One-click PDF'); // a seeded landing feature — the real page, no redirect
+it('no longer serves /landing — only / is the home', function () {
+    $this->get('/landing')->assertNotFound();
 });
 
 it('reflects an admin-added feature on the landing page', function () {

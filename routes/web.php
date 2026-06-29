@@ -5,8 +5,11 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Middleware\SetLocale;
 use App\Models\CoverTemplate;
 use App\Models\CustomPage;
+use App\Models\LandingFeature;
 use App\Models\Payment;
 use App\Models\Report;
+use App\Models\Setting;
+use App\Support\AuthSettings;
 use App\Support\Payments\PaymentSettings;
 use App\Support\ReportCompiler;
 use App\Support\ReportWord;
@@ -14,18 +17,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 
-// Public marketing landing page. Signed-in users skip it and go straight to
-// their dashboard.
-Route::get('/', function () {
-    return auth()->check()
-        ? redirect()->route('reports.index')
-        : view('landing');
-})->name('home');
-
-// The landing page reachable directly (the logo links here), so signed-in users
-// can view it too instead of being bounced to their dashboard like "/" does.
-Route::get('/landing', fn () => view('landing'))->name('landing');
+// Public marketing landing page — the single home for everyone, signed in or
+// not. "/" is the only home; there is no "/landing".
+Route::get('/', fn () => view('landing'))->name('home');
 
 // Switch the UI language. Stored in a long-lived cookie and applied by the
 // SetLocale middleware on every request. Available to guests too (login page).
@@ -34,6 +30,23 @@ Route::get('/locale/{locale}', function (string $locale) {
 
     return back()->withCookie(cookie('locale', $locale, 60 * 24 * 365));
 })->name('locale.switch');
+
+// Standalone listing of all sample reports — the landing page's samples
+// section on its own public page (same cards + live-report preview modal).
+Route::get('/samples', fn () => view('pages.samples'))->name('samples.index');
+
+// Public detail page for a sample report card: description (SEO content),
+// embedded PDF, and 3 related samples. Customizable slug + meta in admin.
+Route::get('/sample-reports/{feature:slug}', function (LandingFeature $feature) {
+    abort_unless($feature->section === 'samples' && $feature->visible, 404);
+
+    $related = LandingFeature::section('samples')->visible()
+        ->where('id', '!=', $feature->id)
+        ->take(3)
+        ->get();
+
+    return view('pages.sample-page', ['feature' => $feature, 'related' => $related]);
+})->name('sample-pages.show');
 
 // Public, SEO-friendly preview of a seeded sample report. Rendered with the
 // same output view (Paged.js) the dashboard uses, but read-only and free — no
@@ -67,6 +80,7 @@ Route::middleware('email-auth')->group(function () {
 
 Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])->name('auth.google.redirect');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
+Route::post('/auth/google/one-tap', [GoogleAuthController::class, 'oneTap'])->name('auth.google.one-tap');
 Route::post('/logout', [GoogleAuthController::class, 'logout'])->name('logout');
 
 // Admin sign-in is password based (regular users use Google), so it lives
@@ -83,6 +97,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::livewire('/admin/roles', 'pages::admin.roles')->name('admin.roles')->can('roles.manage');
     Route::livewire('/admin/feedback', 'pages::admin.feedback')->name('admin.feedback')->can('feedback.manage');
     Route::livewire('/admin/landing', 'pages::admin.landing')->name('admin.landing')->can('landing.manage');
+    Route::livewire('/admin/samples', 'pages::admin.samples')->name('admin.samples')->can('landing.manage');
     Route::livewire('/admin/transactions', 'pages::admin.transactions')->name('admin.transactions')->can('transactions.view');
     Route::livewire('/admin/mail', 'pages::admin.mail')->name('admin.mail')->can('mail.manage');
     Route::livewire('/admin/payments', 'pages::admin.payments')->name('admin.payments')->can('payments.manage');
@@ -352,6 +367,43 @@ Route::get('/debug-pages', function () {
     }
 
     return response('<pre>'.e(implode("\n", $rows)).'</pre>');
+});
+
+// Confirms the live session/auth config so a non-persisting driver (array) or a
+// stale cached config is immediately visible.
+Route::get('/debug-session', function () {
+    $info = [
+        'SESSION_DRIVER (env)' => env('SESSION_DRIVER', '(unset)'),
+        'session.driver (config)' => config('session.driver'),
+        'config cached' => app()->configurationIsCached() ? 'YES — .env is ignored, run /clear' : 'no',
+        'APP_URL' => config('app.url'),
+        'sessions table exists' => Schema::hasTable('sessions') ? 'yes' : 'NO',
+    ];
+    $out = '';
+    foreach ($info as $k => $v) {
+        $out .= str_pad($k, 28).': '.$v."\n";
+    }
+
+    return response('<pre>'.e($out).'</pre>');
+});
+
+// Shows exactly why Google One Tap is or isn't rendering on the live site.
+Route::get('/debug-onetap', function () {
+    $clientId = AuthSettings::googleClientId();
+    $info = [
+        'one_tap setting (raw)' => Setting::get('google_one_tap_enabled', '(not set → off)'),
+        'googleOneTapEnabled()' => AuthSettings::googleOneTapEnabled() ? 'TRUE (will render)' : 'FALSE (renders nothing)',
+        'google client id' => $clientId ?: 'NULL — not configured',
+        'config cached' => app()->configurationIsCached() ? 'YES — run /clear after .env edits' : 'no',
+        'current origin' => rtrim(url('/'), '/'),
+        'REGISTER THIS in Google Console' => 'Authorized JavaScript origin: '.rtrim(url('/'), '/'),
+    ];
+    $out = '';
+    foreach ($info as $k => $v) {
+        $out .= str_pad($k, 32).': '.$v."\n";
+    }
+
+    return response('<pre>'.e($out).'</pre>');
 });
 
 /*

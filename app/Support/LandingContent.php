@@ -24,6 +24,7 @@ class LandingContent
         return [
             // Brand
             'landing_site_name' => config('app.name'),
+            'landing_site_label' => '',
 
             // SEO / meta
             'landing_meta_title' => config('app.name').' — Final-year report & documentation generator',
@@ -73,6 +74,15 @@ class LandingContent
     public static function siteName(): string
     {
         return self::get('landing_site_name') ?: config('app.name');
+    }
+
+    /**
+     * The optional accent label shown after the site name (e.g. "LMS"),
+     * separated by a divider in the header. Empty hides it entirely.
+     */
+    public static function siteLabel(): string
+    {
+        return self::getRaw('landing_site_label');
     }
 
     /**

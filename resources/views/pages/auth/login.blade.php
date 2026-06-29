@@ -65,6 +65,7 @@ new #[Title('Sign in')] class extends Component
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
     <x-app-header />
     <x-validation-popup />
+    @include('partials.google-one-tap')
 
     <div class="flex items-center justify-center px-4 py-16">
         <div class="w-full max-w-md rounded-2xl bg-white p-8 shadow-md ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700 sm:p-10">

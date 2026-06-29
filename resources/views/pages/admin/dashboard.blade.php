@@ -18,10 +18,14 @@ new #[Layout('layouts::admin')] class extends Component
     /** Whether email + password login/registration is offered (else Google-only). */
     public bool $emailAuthEnabled = true;
 
+    /** Whether the Google One Tap prompt shows on the landing & login pages. */
+    public bool $googleOneTapEnabled = false;
+
     public function mount(): void
     {
         $this->maxReports = User::reportLimit();
         $this->emailAuthEnabled = AuthSettings::emailAuthEnabled();
+        $this->googleOneTapEnabled = AuthSettings::googleOneTapEnabled();
     }
 
     /** Persist the global per-user report limit. */
@@ -46,6 +50,18 @@ new #[Layout('layouts::admin')] class extends Component
         session()->flash('limits-saved', $value
             ? 'Email & password sign-in enabled.'
             : 'Email & password sign-in disabled — users sign in with Google only.');
+    }
+
+    /** Toggle the Google One Tap prompt on or off (live, from the switch). */
+    public function updatedGoogleOneTapEnabled(bool $value): void
+    {
+        abort_unless(auth()->user()->can('settings.manage'), 403);
+
+        Setting::set('google_one_tap_enabled', $value ? '1' : '0');
+
+        session()->flash('limits-saved', $value
+            ? 'Google One Tap prompt enabled.'
+            : 'Google One Tap prompt disabled.');
     }
 
     public function getStatsProperty(): array
@@ -198,6 +214,24 @@ new #[Layout('layouts::admin')] class extends Component
                 <p class="mt-4 inline-flex items-center gap-2 rounded-md px-2.5 py-1 text-xs font-medium {{ $emailAuthEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }}">
                     <span class="h-1.5 w-1.5 rounded-full {{ $emailAuthEnabled ? 'bg-emerald-500' : 'bg-slate-400' }}"></span>
                     {{ $emailAuthEnabled ? 'Email & password enabled' : 'Google-only mode' }}
+                </p>
+            </div>
+
+            {{-- Google One Tap toggle --}}
+            <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h2 class="text-sm font-semibold text-slate-900">Google One Tap prompt</h2>
+                        <p class="mt-1 text-sm text-slate-500">Shows a one-tap Google sign-in popup to signed-out visitors on the landing &amp; login pages. Requires a configured Google client id.</p>
+                    </div>
+                    <label class="relative inline-flex shrink-0 cursor-pointer items-center {{ AuthSettings::googleClientId() ? '' : 'pointer-events-none opacity-50' }}">
+                        <input type="checkbox" wire:model.live="googleOneTapEnabled" @disabled(! AuthSettings::googleClientId()) class="peer sr-only">
+                        <div class="h-6 w-11 rounded-full bg-slate-200 after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-all peer-checked:bg-indigo-600 peer-checked:after:translate-x-5"></div>
+                    </label>
+                </div>
+                <p class="mt-4 inline-flex items-center gap-2 rounded-md px-2.5 py-1 text-xs font-medium {{ $googleOneTapEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }}">
+                    <span class="h-1.5 w-1.5 rounded-full {{ $googleOneTapEnabled ? 'bg-emerald-500' : 'bg-slate-400' }}"></span>
+                    {{ AuthSettings::googleClientId() ? ($googleOneTapEnabled ? 'One Tap enabled' : 'One Tap disabled') : 'Google client id not configured' }}
                 </p>
             </div>
         </div>
