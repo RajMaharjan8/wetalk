@@ -70,10 +70,10 @@ it('uses the admin-configured report limit instead of the default', function () 
     expect($user->fresh()->hasReachedReportLimit())->toBeTrue();
 });
 
-it('lets an admin save the global report limit from the dashboard', function () {
+it('lets an admin save the global report limit from the settings page', function () {
     $admin = User::factory()->create(['is_admin' => true]);
 
-    Livewire::actingAs($admin)->test('pages::admin.dashboard')
+    Livewire::actingAs($admin)->test('pages::admin.settings')
         ->set('maxReports', 5)
         ->call('saveLimits')
         ->assertHasNoErrors();

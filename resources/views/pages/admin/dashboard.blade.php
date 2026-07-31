@@ -12,9 +12,6 @@ use Livewire\Component;
 
 new #[Layout('layouts::admin')] class extends Component
 {
-    /** Admin-editable cap on how many reports each user may create. */
-    public int $maxReports = 2;
-
     /** Whether email + password login/registration is offered (else Google-only). */
     public bool $emailAuthEnabled = true;
 
@@ -23,21 +20,8 @@ new #[Layout('layouts::admin')] class extends Component
 
     public function mount(): void
     {
-        $this->maxReports = User::reportLimit();
         $this->emailAuthEnabled = AuthSettings::emailAuthEnabled();
         $this->googleOneTapEnabled = AuthSettings::googleOneTapEnabled();
-    }
-
-    /** Persist the global per-user report limit. */
-    public function saveLimits(): void
-    {
-        abort_unless(auth()->user()->can('settings.manage'), 403);
-
-        $this->validate(['maxReports' => 'required|integer|min:1|max:1000']);
-
-        Setting::set('max_reports_per_user', (string) $this->maxReports);
-
-        session()->flash('limits-saved', 'Report limit saved.');
     }
 
     /** Toggle email/password auth on or off (live, from the switch). */
@@ -182,23 +166,6 @@ new #[Layout('layouts::admin')] class extends Component
     @can('settings.manage')
     <div x-show="settingsOpen" x-collapse x-cloak>
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {{-- Reports per user --}}
-            <form wire:submit="saveLimits" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 class="text-sm font-semibold text-slate-900">Reports per user</h2>
-                <p class="mt-1 text-sm text-slate-500">Maximum reports each user can create. Existing reports above a lowered limit are kept.</p>
-                <div class="mt-4 flex items-end gap-3">
-                    <div class="w-28">
-                        <label class="block text-xs font-medium text-slate-500">Max reports</label>
-                        <input type="number" min="1" max="1000" wire:model="maxReports" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        @error('maxReports') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                    <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
-                        <span wire:loading.remove wire:target="saveLimits">Save</span>
-                        <span wire:loading wire:target="saveLimits">Saving…</span>
-                    </button>
-                </div>
-            </form>
-
             {{-- Email/password auth toggle --}}
             <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div class="flex items-start justify-between gap-4">

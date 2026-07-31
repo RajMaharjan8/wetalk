@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Setting;
+use App\Models\User;
 use App\Support\FeatureSettings;
 use App\Support\LandingContent;
 use Illuminate\Support\Facades\Storage;
@@ -17,6 +18,10 @@ new #[Layout('layouts::admin')] class extends Component
 
     public bool $checkReportEnabled = true;
 
+    /** Admin-editable cap on how many reports each user may create. */
+    #[Validate('required|integer|min:1|max:1000')]
+    public int $maxReports = 2;
+
     /** New favicon upload (ICO/PNG/SVG, ≤ 1 MB). */
     #[Validate('nullable|image|max:1024')]
     public $favicon = null;
@@ -25,6 +30,19 @@ new #[Layout('layouts::admin')] class extends Component
     {
         $this->feedbackEnabled = FeatureSettings::feedbackEnabled();
         $this->checkReportEnabled = FeatureSettings::checkReportEnabled();
+        $this->maxReports = User::reportLimit();
+    }
+
+    /** Persist the global per-user report limit. */
+    public function saveLimits(): void
+    {
+        abort_unless(auth()->user()->can('settings.manage'), 403);
+
+        $this->validateOnly('maxReports');
+
+        Setting::set('max_reports_per_user', (string) $this->maxReports);
+
+        session()->flash('settings-saved', 'Report limit saved.');
     }
 
     public function faviconUrl(): ?string
@@ -126,6 +144,27 @@ new #[Layout('layouts::admin')] class extends Component
                 <div class="h-6 w-11 rounded-full bg-slate-200 after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-all peer-checked:bg-indigo-600 peer-checked:after:translate-x-5"></div>
             </label>
         </div>
+    </div>
+
+    {{-- ============ Limits ============ --}}
+    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <p class="border-b border-slate-100 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Limits</p>
+
+        <form wire:submit="saveLimits" class="px-5 py-4">
+            <h2 class="text-sm font-semibold text-slate-900">Reports per user</h2>
+            <p class="mt-1 text-sm text-slate-500">Maximum reports each user can create. Existing reports above a lowered limit are kept.</p>
+            <div class="mt-3 flex items-end gap-3">
+                <div class="w-28">
+                    <label class="block text-xs font-medium text-slate-500">Max reports</label>
+                    <input type="number" min="1" max="1000" wire:model="maxReports" class="mt-1 block w-full rounded-md px-3 py-2 text-sm ring-1 ring-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
+                    <span wire:loading.remove wire:target="saveLimits">Save</span>
+                    <span wire:loading wire:target="saveLimits">Saving…</span>
+                </button>
+            </div>
+            @error('maxReports') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+        </form>
     </div>
 
     {{-- ============ Branding ============ --}}
